@@ -4,8 +4,11 @@ import dotenv from "dotenv";
 import connectDB from "./lib/db.js";
 import cookieParser from "cookie-parser"
 import messageRoute from "./routes/message.route.js"
+import groupRoute from "./routes/group.route.js"
+import groupMessageRoute from "./routes/groupMrssages.route.js"
 import cors from "cors"
-import { app, server } from "./lib/socket.js";
+import path from "path"
+import { app, io, server } from "./lib/socket.js";
 // env file config
 dotenv.config();
 
@@ -13,15 +16,27 @@ app.use(cors({
     origin: "http://localhost:5173",
     credentials: true
 }));
+const __dirname = path.resolve();
 // receiving the body data 
-app.use(express.json());
-
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use("/uploads", express.static(path.join(__dirname, "src/uploads")));
 // receiving the cookies data
 app.use(cookieParser());
 
 // create a route
-app.use("/api/auth", authRoute);    
+app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
+app.use("/api/group", groupRoute);
+app.use("/api/group/message", groupMessageRoute);
+// Attach `io` globally so controllers can access it
+// app.set("io", io);
+// app.set("userSocketMap", userSocketMap);
+// app.use((req, res, next) => {
+//     req.io = io;
+//     req.userSocketMap = userSocketMap;
+//     next();
+// });
 
 
 const PORT = process.env.PORT;

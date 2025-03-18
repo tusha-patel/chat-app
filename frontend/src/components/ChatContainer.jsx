@@ -6,12 +6,14 @@ import MessageSkeleton from './skeleton/MessageSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { formatMessageTime } from '../lib/Utils';
 import { useRef } from "react"
+import { Download, File } from 'lucide-react';
+import { useGroupStore } from '../store/useGroupStore';
 const ChatContainer = () => {
     const messagesEndRef = useRef();
     const { messages, getMessages, isMessagesLoading, selectedUser, subscribeToMessage, unsubscribeFromMessage } = useChatStore();
-    const { authUser } = useAuthStore();
-
-
+    const { authUser, socket } = useAuthStore();
+    const { groupMessages, getGroupMessages, subscribeGroup } = useGroupStore();
+    const isGroupChat = selectedUser?.members;
     // get the messages
     useEffect(() => {
         getMessages(selectedUser?._id);
@@ -22,8 +24,57 @@ const ChatContainer = () => {
     // scroll to bottom whenever messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, groupMessages]);
 
+
+    // get the group messages
+    useEffect(() => {
+        getGroupMessages(selectedUser?._id);
+        if (socket) {
+            subscribeGroup(socket);
+        }
+    }, [getGroupMessages, selectedUser?._id, socket])
+
+    const getFileType = (fileUrl) => {
+        const extension = fileUrl.split('.').pop().toLowerCase();
+        if (['pdf'].includes(extension)) return 'pdf';
+        if (['zip', 'rar', '7z'].includes(extension)) return 'zip';
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) return 'image';
+        return 'other';
+    };
+
+    // Render file-specific UI
+    const renderFile = (file) => {
+        if (!file || !file.url) return null; // Ensure file exists
+
+        const fileType = getFileType(file.name);
+        const fileUrl = file.url.includes('.') ? file.url : `${file.url}.${file.name.split('.').pop()}`;
+
+        switch (fileType) {
+            case 'pdf':
+                return (
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-500 hover:underline">
+                        <File size={16} /> View PDF
+                    </a>
+                );
+            case 'zip':
+                return (
+                    <a href={fileUrl} download={file.name} className="flex items-center gap-2 text-green-500 hover:underline">
+                        <Download size={16} /> {file.name}
+                    </a>
+                );
+            case 'image':
+                return (
+                    <img src={fileUrl} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
+                );
+            default:
+                return (
+                    <a href={fileUrl} className="flex items-center gap-2 text-gray-500 hover:underline">
+                        <Download size={16} /> Download File
+                    </a>
+                );
+        }
+    };
 
 
 
@@ -38,34 +89,42 @@ const ChatContainer = () => {
         )
     }
 
+
+    const currentMessages = isGroupChat ? groupMessages : messages;
+
     return (
         <div className='flex flex-col flex-1 overflow-auto' >
             <ChatHeader />
             <div className='flex-1 overflow-y-auto p-4 space-y-4  ' >
-                {messages?.map((message) => (
+                {currentMessages?.map((message) => (
                     <div key={message._id}
-                        className={`chat ${message.senderId == authUser._id ? "chat-end " : "chat-start"} `} >
-                        {/* avatar section */}
-                        <div className="chat-image avatar ">
-                            <div className="size-10 rounded-full border ">
-                                <img src={
-                                    message.senderId === authUser._id ?
-                                        authUser.profilePic || "/avatar.png" :
-                                        selectedUser.profilePic || "/avatar.png"
-                                } alt="profile image" />
+                        className={`chat ${message?.senderId == authUser?._id || message?.sender?._id === authUser?._id || message?.sender === authUser?._id ? "chat-end " : "chat-start"}`}>
+                        {/* Avatar section */}
+                        <div className="chat-image avatar">
+                            <div className="size-10 rounded-full border">
+                                <img
+                                    src={
+                                        message.senderId === authUser._id ?
+                                            authUser.profilePic || "/avatar.png" :
+                                            selectedUser.profilePic || "/avatar.png"
+                                    }
+                                    alt="profile image"
+                                />
                             </div>
                         </div>
 
-                        {/* time section */}
-                        <div className="chat-header mb-1 ">
-                            <time className='text-xs opacity-50 ml-1' >{formatMessageTime(message.createdAt)}</time>
+                        {/* Time section */}
+                        <div className="chat-header mb-1">
+                            <time className='text-xs opacity-50 ml-1'>{formatMessageTime(message.createdAt)}</time>
                         </div>
-                        {/* user messages */}
-                        <div className="chat-bubble flex flex-col ">
+
+                        {/* User messages */}
+                        <div className="chat-bubble flex flex-col">
                             {message.image && (
                                 <img src={message.image} alt="Attachment" className='sm:max-w-[200px] rounded-md mb-2' />
                             )}
-                            {message.text && <p>{message.text}</p>}
+                            {message.text || message.message && <p>{message.text || message.message}</p>}
+                            {message.file && renderFile(message.file)}
                         </div>
                     </div>
                 ))}

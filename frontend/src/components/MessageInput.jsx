@@ -1,14 +1,21 @@
-import { Image, Send, X } from 'lucide-react';
+import { File, Image, Send, X } from 'lucide-react';
 import React, { useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useGroupStore } from '../store/useGroupStore';
 
 const MessageInput = () => {
 
     const [text, setText] = useState("");
     const [imagePreview, setImagePreview] = useState(null)
     const fileInputRef = useRef(null);
-    const { sendMessage } = useChatStore();
+    const { sendMessage, selectedUser } = useChatStore();
+    const { authUser } = useAuthStore();
+    const { sendGroupMessage } = useGroupStore();
+    const fileRef = useRef(null);
+    const [file, setFile] = useState(null);
+
 
     // get the image
     const handleImageChange = (e) => {
@@ -25,6 +32,28 @@ const MessageInput = () => {
         reader.readAsDataURL(file);
     }
 
+    // handle file send
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        // console.log(selectedFile);
+
+        if (!selectedFile) return;
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
+        if (selectedFile.size > MAX_FILE_SIZE) {
+            toast.error("File size exceeds 5MB limit.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFile({
+                name: selectedFile.name,
+                type: selectedFile.type, // Use file extension instead of MIME type
+                size: selectedFile.size,
+                data: reader.result
+            });
+        };
+        reader.readAsDataURL(selectedFile);
+    }
     // remove the image
     const removeImage = () => {
         setImagePreview(null);
@@ -34,12 +63,24 @@ const MessageInput = () => {
     // send the message
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!text.trim() && !imagePreview) return;
+        if (!text.trim() && !imagePreview && !file) return;
         try {
-            await sendMessage({
+
+            const messageData = {
                 text: text.trim(),
-                image: imagePreview
-            });
+                image: imagePreview,
+                file: file,
+                groupId: selectedUser._id, // Make sure this is correct
+                groupName: selectedUser?.name, // 👈 Add this if you're using group names   for rooms
+                sender: authUser._id,
+            };
+
+            if (selectedUser?.members) {
+                await sendGroupMessage(messageData);
+            } else { // ✅ One-to-one chat
+                await sendMessage(messageData);
+            }
+
 
             // clear form
             setText("");
@@ -82,14 +123,26 @@ const MessageInput = () => {
                         onChange={handleImageChange}
                     />
 
+                    <input type="file"
+                        className='hidden'
+                        ref={fileRef}
+                        onChange={handleFileChange}
+                    />
+
                     <button type='button' className={`hidden sm:flex btn btn-circle
                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"} `}
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <Image size={20} />
                     </button>
+                    <button type='button' className={`hidden sm:flex btn btn-circle
+                    ${file ? "text-emerald-500" : "text-zinc-400"} `}
+                        onClick={() => fileRef.current?.click()}
+                    >
+                        <File size={20} />
+                    </button>
                 </div>
-                <button type='submit' className='btn btn-sm sm:btn-md  btn-circle' disabled={!text.trim() && !imagePreview}  >
+                <button type='submit' className='btn btn-sm sm:btn-md  btn-circle' disabled={!text.trim() && !imagePreview && !file}  >
                     <Send size={22} />
                 </button>
             </form>

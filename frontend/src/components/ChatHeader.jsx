@@ -18,14 +18,20 @@ const ChatHeader = () => {
                     <div className="avatar">
                         <div className="size-10 relative rounded-full ">
                             <img src={selectedUser?.profilePic || "/avatar.png"}
-                                alt={selectedUser.fullName} />
+                                alt={selectedUser.fullName || selectedUser.name} />
                         </div>
                     </div>
                     {/* user content */}
                     <div>
-                        <h3 className='font-medium capitalize  '>{selectedUser?.fullName}</h3>
-                        <p className="text-sm text-base-content/70">
-                            {onlineUsers.includes(selectedUser?._id) ? "Online" : "Offline"}
+                        <h3 className='font-medium capitalize  '>{selectedUser?.fullName || selectedUser.name}</h3>
+                        <p className="text-sm text-base-content/70 flex gap-1 ">
+                            {selectedUser?.members ? selectedUser.members.map((user) => (
+                                <span>{`${user.fullName}`}</span>
+                            )) :
+                                <div>
+                                    {onlineUsers.includes(selectedUser?._id) ? "Online" : "Offline"}
+                                </div>
+                            }
                         </p>
                     </div>
                 </div>

@@ -2,7 +2,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
-
+import path from "path"
 
 // get all user without the login user
 export const getUserForSidebar = async (req, res) => {
@@ -24,6 +24,7 @@ export const getMessages = async (req, res) => {
         const { id: userToChatId } = req.params;
         const myId = req.user._id;
 
+
         // find messages to filtering
         const message = await Message.find({
             $or: [
@@ -42,25 +43,41 @@ export const getMessages = async (req, res) => {
 // sendMessage 
 export const sendMessage = async (req, res) => {
     try {
-        const { text, image } = req.body;
+        const { text, image, file } = req.body;
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
+        // console.log(req.body);
 
         // upload image to cloudinary
-        let imageUrl;
+        let imageUrl, fileUrl;
         if (image) {
             const uploadResponse = await cloudinary.uploader.upload(image);
             imageUrl = uploadResponse.secure_url;
+        }
+
+        if (file) {
+            const fileExt = path.extname(file.name); // Extract extension
+            const uploadResponse = await cloudinary.uploader.upload(file.data, {
+                resource_type: "raw",
+                folder: "chat_app",
+                use_filename: true,
+                unique_filename: false,
+                format: fileExt.substring(1) // Ensure correct extension
+            });
+            // console.log(uploadResponse);
+            fileUrl = uploadResponse.secure_url;
         }
 
         const newMessage = new Message({
             senderId,
             receiverId,
             text,
-            image: imageUrl
+            image: imageUrl,
+            file: file ? { url: fileUrl, name: file.name } : null,
         });
 
         await newMessage.save();
+        // console.log(newMessage);
 
         // realtime functionality goes here => socket.io
         const receiverSocketId = getReceiverSocketId(receiverId);
