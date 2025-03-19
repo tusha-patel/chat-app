@@ -12,7 +12,7 @@ const ChatContainer = () => {
     const messagesEndRef = useRef();
     const { messages, getMessages, isMessagesLoading, selectedUser, subscribeToMessage, unsubscribeFromMessage } = useChatStore();
     const { authUser, socket } = useAuthStore();
-    const { groupMessages, getGroupMessages, subscribeGroup } = useGroupStore();
+    const { groupMessages, getGroupMessages, subscribeGroup, isGroupMessagesLoading } = useGroupStore();
     const isGroupChat = selectedUser?.members;
     // get the messages
     useEffect(() => {
@@ -45,15 +45,18 @@ const ChatContainer = () => {
 
     // Render file-specific UI
     const renderFile = (file) => {
-        if (!file || !file.url) return null; // Ensure file exists
+        console.log(file.name);
+
+        if (!file || !file.url) return null;
 
         const fileType = getFileType(file.name);
-        const fileUrl = file.url.includes('.') ? file.url : `${file.url}.${file.name.split('.').pop()}`;
+        let fileUrl = file.url;
+        // const fileUrl = file.url.includes('.') ? file.url : `${file.url}.${file.name.split('.').pop()}`;
 
         switch (fileType) {
             case 'pdf':
                 return (
-                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-500 hover:underline">
+                    <a href={fileUrl} target="_blank" download={file.name} rel="noopener noreferrer" className="flex items-center gap-2 text-blue-500 hover:underline">
                         <File size={16} /> View PDF
                     </a>
                 );
@@ -65,12 +68,12 @@ const ChatContainer = () => {
                 );
             case 'image':
                 return (
-                    <img src={fileUrl} alt="Attachment" className="sm:max-w-[200px] rounded-md mb-2" />
+                    <img src={fileUrl} alt="Attachment" download={file.name} className="sm:max-w-[200px] rounded-md mb-2" />
                 );
             default:
                 return (
-                    <a href={fileUrl} className="flex items-center gap-2 text-gray-500 hover:underline">
-                        <Download size={16} /> Download File
+                    <a href={fileUrl} download={file.name} target="_blank" className="flex items-center gap-2 text-gray-400 hover:underline">
+                        <Download size={16} /> {file.name}
                     </a>
                 );
         }
@@ -79,7 +82,7 @@ const ChatContainer = () => {
 
 
     // message loading...
-    if (isMessagesLoading) {
+    if (isMessagesLoading, isGroupMessagesLoading) {
         return (
             <div className='flex-1 flex flex-col overflow-auto'>
                 <ChatHeader />
@@ -128,6 +131,7 @@ const ChatContainer = () => {
                         </div>
                     </div>
                 ))}
+
                 <div ref={messagesEndRef}></div>
             </div>
             <MessageInput />

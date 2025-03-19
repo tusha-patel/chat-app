@@ -48,6 +48,8 @@ export const useChatStore = create((set, get) => ({
             const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
             set({ messages: [...messages, res.data] });
         } catch (error) {
+            console.log(error);
+
             console.log("error from sendMessage in useChatStore", error);
             toast.error(error.response.data.message)
         }
@@ -66,9 +68,11 @@ export const useChatStore = create((set, get) => ({
             const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
             if (!isMessageSentFromSelectedUser) return;
 
-            set({
-                messages: [...get().messages, newMessage]
-            })
+            if (!newMessage.groupId) { // Ensure it's NOT a group message
+                set((state) => ({
+                    messages: [...state.messages, newMessage],
+                }));
+            }
         })
 
     },

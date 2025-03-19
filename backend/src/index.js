@@ -18,8 +18,8 @@ app.use(cors({
 }));
 const __dirname = path.resolve();
 // receiving the body data 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json({ limit: "200mb" }));
+app.use(express.urlencoded({ limit: "200mb", extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "src/uploads")));
 // receiving the cookies data
 app.use(cookieParser());
@@ -29,14 +29,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/group", groupRoute);
 app.use("/api/group/message", groupMessageRoute);
-// Attach `io` globally so controllers can access it
-// app.set("io", io);
-// app.set("userSocketMap", userSocketMap);
-// app.use((req, res, next) => {
-//     req.io = io;
-//     req.userSocketMap = userSocketMap;
-//     next();
-// });
+
 
 
 const PORT = process.env.PORT;

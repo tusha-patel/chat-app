@@ -8,7 +8,8 @@ const GroupChat = () => {
     const [groupMembers, setGroupMembers] = useState([]);
     const { onlineUsers } = useAuthStore();
     const { authUser } = useAuthStore();
-    const { createGroup } = useGroupStore();
+    const { createGroup, isGroupLoading } = useGroupStore();
+    console.log(isGroupLoading);
 
     const toggleGroupMember = (userId) => {
         setGroupMembers((prev) =>
@@ -33,6 +34,7 @@ const GroupChat = () => {
                 members
             }
             createGroup(data);
+            // listenForGroupUpdates(socket);
             setGroupName('');
             location.reload();
 
@@ -41,6 +43,8 @@ const GroupChat = () => {
             console.log("error from create group", error);
         }
     }
+
+    if (isGroupLoading) return <div>Loading...</div>
 
     return (
         <div>

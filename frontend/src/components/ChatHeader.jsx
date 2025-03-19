@@ -26,7 +26,7 @@ const ChatHeader = () => {
                         <h3 className='font-medium capitalize  '>{selectedUser?.fullName || selectedUser.name}</h3>
                         <p className="text-sm text-base-content/70 flex gap-1 ">
                             {selectedUser?.members ? selectedUser.members.map((user) => (
-                                <span>{`${user.fullName}`}</span>
+                                <span>{`${user.fullName},`}</span>
                             )) :
                                 <div>
                                     {onlineUsers.includes(selectedUser?._id) ? "Online" : "Offline"}

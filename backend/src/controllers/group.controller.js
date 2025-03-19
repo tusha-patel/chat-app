@@ -21,7 +21,7 @@ export const createGroup = async (req, res) => {
         });
 
         await newGroup.save();
-        console.log("New Group Created:", newGroup);
+        // console.log("New Group Created:", newGroup);
 
         // Emit event to all group members
         members.forEach((memberId) => {
@@ -31,7 +31,6 @@ export const createGroup = async (req, res) => {
 
                 // ✅ Add user to the Socket.io room
                 io.sockets.sockets.get(memberSocketId)?.join(newGroup._id.toString());
-
                 // ✅ Send real-time event that a new group was created
                 io.to(memberSocketId).emit("groupCreated", newGroup);
             }

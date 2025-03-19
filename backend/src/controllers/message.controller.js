@@ -56,6 +56,9 @@ export const sendMessage = async (req, res) => {
         }
 
         if (file) {
+            if (file && file.size > 100 * 1024 * 1024) {
+                return res.status(413).json({ message: "File size exceeds 100MB limit." });
+            }
             const fileExt = path.extname(file.name); // Extract extension
             const uploadResponse = await cloudinary.uploader.upload(file.data, {
                 resource_type: "raw",
@@ -77,7 +80,7 @@ export const sendMessage = async (req, res) => {
         });
 
         await newMessage.save();
-        // console.log(newMessage);
+        console.log(newMessage);
 
         // realtime functionality goes here => socket.io
         const receiverSocketId = getReceiverSocketId(receiverId);

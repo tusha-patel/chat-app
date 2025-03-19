@@ -27,7 +27,7 @@ const Sidebar = () => {
 
     useEffect(() => {
         if (socket) {
-            listenForGroupUpdates(socket); // ✅ Listen for real-time group updates
+            listenForGroupUpdates(socket);
         }
     }, [socket]);
 
@@ -40,6 +40,8 @@ const Sidebar = () => {
     const filteredUsers = showOnlineOnly ? users.filter((user) => onlineUsers.includes(user._id)) : users;
     const userGroups = groups.filter(group => group.members.some(member => member._id === currentUser._id));
     const sortedGroupsAndUsers = [...userGroups, ...filteredUsers];
+    console.log(sortedGroupsAndUsers);
+
     if (isUsersLoading) return <SidebarSkeleton />
 
 
@@ -94,7 +96,7 @@ const Sidebar = () => {
 
                                 {/* user info Only visible on larger screen */}
                                 <div className="hidden lg:block text-left min-w-0 ">
-                                    <p className='capitalize font-medium truncate ' >{user.fullName}</p>
+                                    <p className='capitalize font-medium truncate ' >{user.fullName || user.name}</p>
                                     <div className='text-zinc-400 text-sm' >
                                         {onlineUsers.includes(user?._id) ? "Online" : "Offline"}
                                     </div>

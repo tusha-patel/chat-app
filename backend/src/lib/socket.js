@@ -29,7 +29,7 @@ io.on("connection", (socket) => {
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
     socket.on("joinGroup", (groupId) => {
-        console.log(`User ${userId} joined group ${groupId}`);
+        // console.log(`User ${userId} joined group ${groupId}`);
         socket.join(groupId);
     });
 
