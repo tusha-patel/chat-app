@@ -31,7 +31,14 @@ export const getMessages = async (req, res) => {
                 { senderId: myId, receiverId: userToChatId },
                 { senderId: userToChatId, receiverId: myId }
             ]
-        });
+        }).populate("senderId", "fullName").populate({
+            path: "replyMsg",
+            select: ["text", "image", "file", "createdAt"],
+            populate: {
+                path: "senderId",
+                select: "fullName" // Populate sender fullName inside replyMsg
+            }
+        })
 
         res.status(200).json(message);
     } catch (error) {
@@ -43,10 +50,10 @@ export const getMessages = async (req, res) => {
 // sendMessage 
 export const sendMessage = async (req, res) => {
     try {
-        const { text, image, file } = req.body;
+        const { text, image, file, replyMsg } = req.body;
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
-        // console.log(req.body);
+        // console.log(replyMsg);
 
         // upload image to cloudinary
         let imageUrl, fileUrl;
@@ -77,19 +84,28 @@ export const sendMessage = async (req, res) => {
             text,
             image: imageUrl,
             file: file ? { url: fileUrl, name: file.name } : null,
+            replyMsg: replyMsg ? replyMsg : null,
         });
 
         await newMessage.save();
-        console.log(newMessage);
+        const populatedMessage = await Message.findById(newMessage._id)
+            .populate({
+                path: "replyMsg",
+                select: ["text", "image", "file", "createdAt"],
+                populate: {
+                    path: "senderId",
+                    select: "fullName",
+                },
+            })
+            .populate("senderId", "fullName");
 
-        // realtime functionality goes here => socket.io
+        // Real-time functionality using Socket.io
         const receiverSocketId = getReceiverSocketId(receiverId);
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", newMessage);
+            io.to(receiverSocketId).emit("newMessage", populatedMessage);
         }
 
-
-        res.status(200).json(newMessage);
+        res.status(200).json(populatedMessage);
     } catch (error) {
         console.log("Error in sendMessage controller : ", error.message);
         res.status(500).json({ message: "internal server message" })

@@ -1,18 +1,19 @@
-import { File, Image, Send, X } from 'lucide-react';
+import { CircleX, File, Image, Send, ShieldClose, X } from 'lucide-react';
 import React, { useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore';
-import { useAuthStore } from '../store/useAuthStore';
 import { useGroupStore } from '../store/useGroupStore';
 import InputEmoji from 'react-input-emoji'
-const MessageInput = ({ replayMsg }) => {
-    console.log(replayMsg);
+import { formatMessageDay } from '../lib/Utils';
+import renderFile from '../lib/file';
+const MessageInput = ({ replyMsg, setReplyMsg }) => {
+    console.log(replyMsg)
+
 
     const [text, setText] = useState("");
     const [imagePreview, setImagePreview] = useState(null)
     const fileInputRef = useRef(null);
     const { sendMessage, selectedUser } = useChatStore();
-    const { authUser } = useAuthStore();
     const { sendGroupMessage } = useGroupStore();
     const fileRef = useRef(null);
     const [file, setFile] = useState(null);
@@ -73,9 +74,11 @@ const MessageInput = ({ replayMsg }) => {
                 file: file,
                 groupId: selectedUser._id,
                 groupName: selectedUser?.name,
-                sender: authUser._id,
             };
 
+            if (replyMsg) {
+                messageData.replyMsg = replyMsg._id;
+            }
             if (selectedUser?.members) {
                 await sendGroupMessage(messageData);
             } else {
@@ -83,6 +86,7 @@ const MessageInput = ({ replayMsg }) => {
             }
 
             // clear form
+            setReplyMsg(null)
             setText("");
             setImagePreview(null);
             setFile(null);
@@ -96,7 +100,7 @@ const MessageInput = ({ replayMsg }) => {
     return (
         // show image preview 
         <div className='p-4 w-full '>
-            {imagePreview && (
+            {imagePreview  && (
                 <div className="mb-3 flex items-center gap-2 ">
                     <div className="relative">
                         <img src={imagePreview}
@@ -111,54 +115,70 @@ const MessageInput = ({ replayMsg }) => {
                 </div>
             )}
             <form onSubmit={handleSendMessage} className='flex items-center gap-2' >
-                <div className="flex-1 flex gap-2  ">
-                    <InputEmoji
-                        type="text"
-                        className="w-full input input-bordered focus:outline-none rounded-lg bg-base-200 input-sm sm:input-md m-0"
-                        placeholder="Type a message..."
-                        value={text}
-                        keepOpened
-                        cleanOnEnter
-                        onChange={setText}
-                        background="transparent"
-                        color='white'
-                        borderRadius="10px"
-                        borderColor='white'
-                    />
-                    {/* <input type="text"
+                <div className={`flex-1 flex gap-2 relative `} >
+                    <div className="flex-1 flex gap-2   ">
+                        {/* <div className={`flex flex-col flex-1 relative shadow-2xl ${replyMsg ? "bg-base-200 rounded " : ""} `} > */}
+                        {replyMsg &&
+                            <div className='absolute flex justify-between p-3 space-y-1 shadow-2xl bottom-10 left-0 bg-base-200  rounded w-2/3 text-primary-content  ' >
+                                <div>
+                                    <div className='text-lg' >{replyMsg.text || replyMsg.message}</div>
+                                    {replyMsg.file && <div className='py-2' >{renderFile(replyMsg.file)}</div>}
+                                    <div >{replyMsg.image && <img src={replyMsg.image} alt="image" className='h-14 w-14 object-cover ' />} </div>
+                                    <div className='text-sm' >{replyMsg.senderId.fullName}, <span className='text-[12px]' >{formatMessageDay(replyMsg.createdAt)}</span> </div>
+                                </div>
+                                <div>
+                                    <CircleX className='cursor-pointer' onClick={() => setReplyMsg(null)} />
+                                </div>
+                            </div>}
+                        <InputEmoji
+                            type="text"
+                            className="w-full input input-bordered focus:outline-none rounded-lg bg-base-200 input-sm sm:input-md m-0"
+                            placeholder="Type a message..."
+                            value={text}
+                            keepOpened
+                            cleanOnEnter
+                            onChange={setText}
+                            background="transparent"
+                            color='white'
+                            borderRadius="10px"
+                            borderColor='white'
+                        />
+                        {/* </div> */}
+                        {/* <input type="text"
                         className='w-full input input-bordered focus:outline-none rounded-lg input-sm sm:input-md  '
                         placeholder='Type a message...'
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                     /> */}
-                    <input type="file"
-                        accept='image/*'
-                        className='hidden'
-                        ref={fileInputRef}
-                        onChange={handleImageChange}
-                    />
+                        <input type="file"
+                            accept='image/*'
+                            className='hidden'
+                            ref={fileInputRef}
+                            onChange={handleImageChange}
+                        />
 
-                    <input type="file"
-                        className='hidden'
-                        ref={fileRef}
-                        onChange={handleFileChange}
-                    />
-                    <button type='button' className={`hidden sm:flex btn btn-circle
+                        <input type="file"
+                            className='hidden'
+                            ref={fileRef}
+                            onChange={handleFileChange}
+                        />
+                        <button type='button' className={`hidden sm:flex btn btn-circle
                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"} `}
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        <Image size={20} />
-                    </button>
-                    <button type='button' className={`hidden sm:flex btn btn-circle
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Image size={20} />
+                        </button>
+                        <button type='button' className={`hidden sm:flex btn btn-circle
                     ${file ? "text-emerald-500" : "text-zinc-400"} `}
-                        onClick={() => fileRef.current?.click()}
-                    >
-                        <File size={20} />
+                            onClick={() => fileRef.current?.click()}
+                        >
+                            <File size={20} />
+                        </button>
+                    </div>
+                    <button type='submit' className='btn btn-sm sm:btn-md  btn-circle' disabled={!text.trim() && !imagePreview && !file}  >
+                        <Send size={22} />
                     </button>
                 </div>
-                <button type='submit' className='btn btn-sm sm:btn-md  btn-circle' disabled={!text.trim() && !imagePreview && !file}  >
-                    <Send size={22} />
-                </button>
             </form>
         </div>
     )

@@ -25,22 +25,28 @@ export const useGroupStore = create((set, get) => ({
     },
 
     // Listen for new groups in real-time
-    listenForGroupUpdates: (socket) => {
-        socket.on("groupCreated", (newGroup) => {
-            console.log("New group received via socket:", newGroup); // Debugging Log
+   listenForGroupUpdates: (socket) => {
+    socket.on("groupCreated", (newGroup) => {
+        console.log("New group received via socket:", newGroup); 
 
-            set((state) => ({
-                groups: [...state.groups, newGroup], // ✅ Ensure new group is added to state
-            }));
-
-            toast.success(`New group created: ${newGroup.name}`);
-        });
-    },
+        set((state) => ({
+            groups: [...state.groups, newGroup], 
+        }));
+    });
+},
     subscribeGroup: (socket) => {
         socket.on("newMessage", (message) => {
-            if (message.groupId) { // Ensure it's a group message
+            console.log(message);
+
+            if (message.groupId) {
                 set((state) => ({
-                    groupMessages: [...state.groupMessages, message],
+                    groupMessages: [
+                        ...state.groupMessages,
+                        {
+                            ...message,
+                            replyMsg: message.replyMsg || null, 
+                        },
+                    ],
                 }));
             }
         });
@@ -66,6 +72,8 @@ export const useGroupStore = create((set, get) => ({
         try {
             const res = await axiosInstance.post("/group/message/send_group_message", data);
             set({ groupMessages: [...groupMessages, res.data] });
+            console.log(res);
+
         } catch (error) {
             console.log("error form group message store", error);
             toast.error(error.response.data.message);

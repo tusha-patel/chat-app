@@ -7,7 +7,7 @@ import path from "path"
 // send the meesage with group
 export const sendGroupMessage = async (req, res) => {
     try {
-        const { groupId, text, image, file } = req.body;
+        const { groupId, text, image, file, replyMsg } = req.body;
         // console.log(groupId, text);
         console.log(req.body);
 
@@ -39,18 +39,32 @@ export const sendGroupMessage = async (req, res) => {
 
         const newMessage = new GroupMessage({
             groupId,
-            sender: userId,
+            senderId: userId,
             message: text,
             image: imageUrl,
             file: file ? { url: fileUrl, name: file.name } : null,
+            replyMsg: replyMsg ? replyMsg : null,
         });
 
         await newMessage.save();
-        io.to(groupId).emit("newMessage", newMessage);
+
+        const populatedMessage = await GroupMessage.findById(newMessage._id)
+            .populate({
+                path: "replyMsg",
+                select: ["message", "image", "file", "createdAt"],
+                populate: {
+                    path: "senderId",
+                    select: "fullName",
+                },
+            })
+            .populate("senderId", "fullName");
+
+        // Real-time functionality using Socket.io
+        io.to(groupId).emit("newMessage", populatedMessage);
         // io.to(groupId).emit('groupMessage', { groupId, message: text, sender: userId });
         console.log(newMessage);
 
-        res.status(201).json(newMessage);
+        res.status(201).json(populatedMessage);
     } catch (error) {
         console.error('Error sending group message:', error);
         res.status(500).json({ message: 'Internal server error' });
@@ -74,7 +88,14 @@ export const getGroupMessages = async (req, res) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        const messages = await GroupMessage.find({ groupId }).populate('sender', 'username');
+        const messages = await GroupMessage.find({ groupId }).populate('senderId', 'fullName').populate({
+            path: "replyMsg",
+            select: ["message", "image", "file", "createdAt"],
+            populate: {
+                path: "senderId",
+                select: "fullName"
+            }
+        });;
 
         res.status(200).json(messages);
     } catch (error) {

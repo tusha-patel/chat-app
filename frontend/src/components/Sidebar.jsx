@@ -15,6 +15,7 @@ const Sidebar = () => {
     const [showOnlineOnly, setShowOnlineOnly] = useState(false);
     const [group, setGroup] = useState(false);
     const { getGroup, groups, listenForGroupUpdates } = useGroupStore();
+
     // get the all users for side bar
     useEffect(() => {
         getUsers();
@@ -23,13 +24,13 @@ const Sidebar = () => {
     // for new group create
     useEffect(() => {
         getGroup(); // Fetch initial groups
-    }, []);
+    }, [getGroup]);
 
     useEffect(() => {
         if (socket) {
             listenForGroupUpdates(socket);
         }
-    }, [socket]);
+    }, [socket, listenForGroupUpdates]);
 
     useEffect(() => {
         if (selectedUser && socket) {
@@ -40,7 +41,7 @@ const Sidebar = () => {
     const filteredUsers = showOnlineOnly ? users.filter((user) => onlineUsers.includes(user._id)) : users;
     const userGroups = groups.filter(group => group.members.some(member => member._id === currentUser._id));
     const sortedGroupsAndUsers = [...userGroups, ...filteredUsers];
-    console.log(sortedGroupsAndUsers);
+    // console.log(sortedGroupsAndUsers);
 
     if (isUsersLoading) return <SidebarSkeleton />
 
@@ -108,7 +109,7 @@ const Sidebar = () => {
                 }
                 {group && (
                     <>
-                        <GroupChat />
+                        <GroupChat setGroup={setGroup} />
                     </>
                 )}
                 {filteredUsers.length === 0 && (

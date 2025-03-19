@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGroupStore } from '../store/useGroupStore';
-const GroupChat = () => {
+import SidebarSkeleton from './skeleton/SidebarSkeleton';
+const GroupChat = ({ setGroup }) => {
     const { users, selectedUser } = useChatStore();
     const [groupName, setGroupName] = useState('');
     const [groupMembers, setGroupMembers] = useState([]);
@@ -19,6 +20,9 @@ const GroupChat = () => {
         );
     };
 
+
+
+
     const handleCreateGroup = () => {
         try {
             if (!groupName || groupMembers.length < 1) {
@@ -34,17 +38,15 @@ const GroupChat = () => {
                 members
             }
             createGroup(data);
-            // listenForGroupUpdates(socket);
             setGroupName('');
-            location.reload();
-
+            setGroup(false);
             setGroupMembers([]);
         } catch (error) {
             console.log("error from create group", error);
         }
     }
 
-    if (isGroupLoading) return <div>Loading...</div>
+    if (isGroupLoading) return <SidebarSkeleton />
 
     return (
         <div>
