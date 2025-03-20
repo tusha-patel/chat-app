@@ -6,8 +6,9 @@ import MessageSkeleton from './skeleton/MessageSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { formatMessageTime } from '../lib/Utils';
 import { useRef } from "react"
-import { Reply } from 'lucide-react';
+import { EllipsisVertical, Reply, Copy } from 'lucide-react';
 import { useGroupStore } from '../store/useGroupStore';
+import toast from "react-hot-toast";
 import renderFile from '../lib/file';
 const ChatContainer = () => {
     const messagesEndRef = useRef();
@@ -41,6 +42,18 @@ const ChatContainer = () => {
 
 
 
+
+    // copy the message
+    const handleCopyClick = async (text) => {
+        try {
+            await window.navigator.clipboard.writeText(text);
+            toast.success("Copied to clipboard")
+        } catch (err) {
+            console.log(err, "copy text error");
+            toast.error("Copy to clipboard failed.");
+        }
+    }
+
     // message loading...
     if (isMessagesLoading, isGroupMessagesLoading) {
         return (
@@ -52,7 +65,6 @@ const ChatContainer = () => {
         )
     }
 
-
     const currentMessages = isGroupChat ? groupMessages : messages;
 
     return (
@@ -63,6 +75,8 @@ const ChatContainer = () => {
                     <div key={message._id}
                         className={`chat ${message?.senderId == authUser?._id || message?.senderId._id == authUser._id ? "chat-end " : "chat-start"}`}>
                         {/* Avatar section */}
+                        {/* {console.log(message)
+                        } */}
                         <div className="chat-image avatar">
                             <div className="size-10 rounded-full border">
                                 <img
@@ -83,8 +97,7 @@ const ChatContainer = () => {
 
                         {/* User messages */}
                         <div className="chat-bubble flex flex-col">
-                            {/* {message.senderId === authUser._id || message?.senderId._id == authUser._id ? ( */}
-                            <div className='flex gap-2 ' >
+                            <div className='flex gap-2  ' >
                                 <div>
                                     {message.replyMsg &&
                                         <div className='bg-base-200 py-2 px-3 rounded mb-2 ' >
@@ -99,8 +112,15 @@ const ChatContainer = () => {
                                     {message.text || message.message && <p>{message.text || message.message}</p>}
                                     {message?.file && renderFile(message?.file)}
                                 </div>
-                                <div className='' >
+                                {/* <div className='' >
                                     <button className='cursor-pointer' onClick={() => setReplyMsg(message)} ><Reply /></button>
+                                </div> */}
+                                <div className="dropdown  cursor-pointer ">
+                                    <div tabIndex={0} ><EllipsisVertical /></div>
+                                    <ul tabIndex={0} className="dropdown-content menu bg-base-200 z-1 w-52 p-2 shadow-2xl">
+                                        <li><button className='cursor-pointer' onClick={() => setReplyMsg(message)} ><Reply />Replay</button></li>
+                                        <li> <button onClick={() => handleCopyClick(message.text || message.message)} > <Copy /> Copy</button> </li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
