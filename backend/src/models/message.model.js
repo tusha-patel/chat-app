@@ -24,14 +24,10 @@ const messageSchema = new mongoose.Schema({
     },
     replyMsg: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Message", 
+        ref: "Message",
         default: null,
     },
-
-
 }, { timestamps: true });
-
-
 
 const Message = mongoose.model("Message", messageSchema);
 

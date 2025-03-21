@@ -17,7 +17,6 @@ export const useAuthStore = create((set, get) => ({
 
     // loading
     isCheckingAuth: true,
-
     socket: null,
 
     // user is login or not
@@ -82,7 +81,6 @@ export const useAuthStore = create((set, get) => ({
         } finally {
             set({ isLoggIng: false });
         }
-
     },
 
 
@@ -111,14 +109,14 @@ export const useAuthStore = create((set, get) => ({
             query: {
                 userId: authUser._id,
             }
-    });
+        });
         socket.connect();
         set({ socket: socket });
 
         // get the online users
         socket.on("getOnlineUsers", (userIds) => {
             set({ onlineUsers: userIds })
-        }); 
+        });
     },
 
     // disconnect the socket io

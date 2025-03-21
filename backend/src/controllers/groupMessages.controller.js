@@ -8,8 +8,6 @@ import path from "path"
 export const sendGroupMessage = async (req, res) => {
     try {
         const { groupId, text, image, file, replyMsg } = req.body;
-        // console.log(groupId, text);
-        console.log(req.body);
 
         const userId = req.user._id;
 
@@ -33,7 +31,7 @@ export const sendGroupMessage = async (req, res) => {
                 unique_filename: false,
                 format: fileExt.substring(1) // Ensure correct extension
             });
-            // console.log(uploadResponse);
+
             fileUrl = uploadResponse.secure_url;
         }
 
@@ -61,13 +59,10 @@ export const sendGroupMessage = async (req, res) => {
 
         // Real-time functionality using Socket.io
         io.to(groupId).emit("newMessage", populatedMessage);
-        // io.to(groupId).emit('groupMessage', { groupId, message: text, sender: userId });
-        console.log(newMessage);
-
         res.status(201).json(populatedMessage);
     } catch (error) {
         console.error('Error sending group message:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -100,6 +95,67 @@ export const getGroupMessages = async (req, res) => {
         res.status(200).json(messages);
     } catch (error) {
         console.error('Error fetching group messages:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+
+// deleteGroupMessage
+export const deleteGroupMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const groupMessage = await GroupMessage.findByIdAndDelete(messageId);
+
+        if (!groupMessage) {
+            return res.status(400).json({
+                message: "This message not removed ! plz try again"
+            });
+        }
+        // Emit the event to notify users about the deleted message
+        io.emit("groupMessageDeleted", { messageId });
+        res.status(200).json({ groupMessage });
+    } catch (error) {
+        console.error('Error delete group messages:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+
+export const updateGroupMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const { text } = req.body;
+
+        if (!messageId || !text) {
+            return res.status(400).json({ message: "Message ID and text are required." });
+        }
+
+        // Update the message in the database
+        const updatedGroupMessage = await GroupMessage.findByIdAndUpdate(
+            messageId,
+            { message: text },
+            { new: true }
+        ).populate('senderId', 'fullName').populate({
+            path: "replyMsg",
+            select: ["message", "image", "file", "createdAt"],
+            populate: {
+                path: "senderId",
+                select: "fullName"
+            }
+        });;
+
+        if (!updatedGroupMessage) {
+            return res.status(404).json({ message: "Message not found." });
+        }
+
+        // Emit the updated message to all group members
+        // console.log("Emitting editGroupMessages event for group:", updatedGroupMessage.groupId);
+        io.emit("editGroupMessages", updatedGroupMessage);
+
+        res.status(200).json(updatedGroupMessage);
+    } catch (error) {
+        console.error('Error updating group message:', error);
+        res.status(500).json({ message: "Internal server error" });
     }
 };

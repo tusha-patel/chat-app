@@ -6,17 +6,18 @@ import MessageSkeleton from './skeleton/MessageSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { formatMessageTime } from '../lib/Utils';
 import { useRef } from "react"
-import { EllipsisVertical, Reply, Copy } from 'lucide-react';
+import { EllipsisVertical, Reply, Copy, SquareX, Pencil } from 'lucide-react';
 import { useGroupStore } from '../store/useGroupStore';
 import toast from "react-hot-toast";
 import renderFile from '../lib/file';
 const ChatContainer = () => {
     const messagesEndRef = useRef();
-    const { messages, getMessages, isMessagesLoading, selectedUser, subscribeToMessage, unsubscribeFromMessage } = useChatStore();
-    const { authUser, socket } = useAuthStore();
-    const { groupMessages, getGroupMessages, subscribeGroup, isGroupMessagesLoading } = useGroupStore();
+    const { messages, getMessages, isMessagesLoading, deleteMessage, selectedUser, subscribeToMessage, unsubscribeFromMessage } = useChatStore();
+    const { authUser } = useAuthStore();
+    const { groupMessages, getGroupMessages, subscribeGroup, isGroupMessagesLoading, deleteGroupMessage, unsubscribeGroupMessage } = useGroupStore();
     const isGroupChat = selectedUser?.members;
     let [replyMsg, setReplyMsg] = useState(null);
+    const [editMessage, setEditMessage] = useState("");
 
 
     // get the messages
@@ -35,13 +36,9 @@ const ChatContainer = () => {
     // get the group messages
     useEffect(() => {
         getGroupMessages(selectedUser?._id);
-        if (socket) {
-            subscribeGroup(socket);
-        }
-    }, [getGroupMessages, selectedUser?._id, socket, subscribeGroup])
-
-
-
+        subscribeGroup();
+        return () => unsubscribeGroupMessage()
+    }, [getGroupMessages, selectedUser?._id, subscribeGroup, unsubscribeGroupMessage])
 
     // copy the message
     const handleCopyClick = async (text) => {
@@ -51,6 +48,30 @@ const ChatContainer = () => {
         } catch (err) {
             console.log(err, "copy text error");
             toast.error("Copy to clipboard failed.");
+        }
+    }
+
+    // delete message
+    const handleDeleteMessage = async (messageId) => {
+        // console.log(messageId);
+        try {
+            if (selectedUser?.members) {
+                deleteGroupMessage(messageId)
+            } else {
+                await deleteMessage(messageId);
+            }
+        } catch (error) {
+            console.error("Error deleting message:", error);
+        }
+    };
+
+    // update message
+    const handleEditMessage = (messageId) => {
+        try {
+            // console.log(messageId);
+            setEditMessage(messageId);
+        } catch (error) {
+            console.error("Error deleting message:", error);
         }
     }
 
@@ -65,6 +86,7 @@ const ChatContainer = () => {
         )
     }
 
+    // show user and group message combine
     const currentMessages = isGroupChat ? groupMessages : messages;
 
     return (
@@ -75,8 +97,6 @@ const ChatContainer = () => {
                     <div key={message._id}
                         className={`chat ${message?.senderId == authUser?._id || message?.senderId._id == authUser._id ? "chat-end " : "chat-start"}`}>
                         {/* Avatar section */}
-                        {/* {console.log(message)
-                        } */}
                         <div className="chat-image avatar">
                             <div className="size-10 rounded-full border">
                                 <img
@@ -112,14 +132,17 @@ const ChatContainer = () => {
                                     {message.text || message.message && <p>{message.text || message.message}</p>}
                                     {message?.file && renderFile(message?.file)}
                                 </div>
-                                {/* <div className='' >
-                                    <button className='cursor-pointer' onClick={() => setReplyMsg(message)} ><Reply /></button>
-                                </div> */}
-                                <div className="dropdown  cursor-pointer ">
+                                <div className={`dropdown  cursor-pointer ${message?.senderId == authUser?._id || message?.senderId._id == authUser._id && "dropdown-end"}`}>
                                     <div tabIndex={0} ><EllipsisVertical /></div>
-                                    <ul tabIndex={0} className="dropdown-content menu bg-base-200 z-1 w-52 p-2 shadow-2xl">
-                                        <li><button className='cursor-pointer' onClick={() => setReplyMsg(message)} ><Reply />Replay</button></li>
-                                        <li> <button onClick={() => handleCopyClick(message.text || message.message)} > <Copy /> Copy</button> </li>
+                                    <ul tabIndex={0} className="dropdown-content mt-2 menu bg-base-200 z-1 w-52 p-2 shadow-2xl ">
+                                        <li><button className='cursor-pointer' onClick={() => setReplyMsg(message)} ><Reply size={17} />Replay</button></li>
+                                        <li><button onClick={() => handleCopyClick(message.text || message.message)} > <Copy size={17} /> Copy</button> </li>
+                                        {message?.senderId == authUser?._id || message?.senderId._id == authUser._id && <li><button onClick={() => handleDeleteMessage(message._id)} > <SquareX size={17} />Remove</button> </li>}
+                                        {message?.senderId == authUser?._id || message?.senderId._id == authUser._id &&
+                                            <span>
+                                                {message?.file || message?.image ? "" : <li><button onClick={() => handleEditMessage(message)} > <Pencil size={17} /> Edit</button> </li>}
+                                            </span>
+                                        }
                                     </ul>
                                 </div>
                             </div>
@@ -128,7 +151,7 @@ const ChatContainer = () => {
                 ))}
                 <div ref={messagesEndRef}></div>
             </div>
-            <MessageInput replyMsg={replyMsg} setReplyMsg={setReplyMsg} />
+            <MessageInput replyMsg={replyMsg} setReplyMsg={setReplyMsg} editMessage={editMessage} setEditMessage={setEditMessage} />
         </div>
     )
 }

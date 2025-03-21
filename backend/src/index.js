@@ -5,7 +5,7 @@ import connectDB from "./lib/db.js";
 import cookieParser from "cookie-parser"
 import messageRoute from "./routes/message.route.js"
 import groupRoute from "./routes/group.route.js"
-import groupMessageRoute from "./routes/groupMrssages.route.js"
+import groupMessageRoute from "./routes/groupMessages.route.js"
 import cors from "cors"
 import path from "path"
 import { app, io, server } from "./lib/socket.js";

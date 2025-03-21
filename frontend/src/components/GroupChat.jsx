@@ -10,8 +10,9 @@ const GroupChat = ({ setGroup }) => {
     const { onlineUsers } = useAuthStore();
     const { authUser } = useAuthStore();
     const { createGroup, isGroupLoading } = useGroupStore();
-    console.log(isGroupLoading);
+    // console.log(isGroupLoading);
 
+    // set all the group members
     const toggleGroupMember = (userId) => {
         setGroupMembers((prev) =>
             prev.includes(userId)
@@ -20,9 +21,7 @@ const GroupChat = ({ setGroup }) => {
         );
     };
 
-
-
-
+    // create the new group
     const handleCreateGroup = () => {
         try {
             if (!groupName || groupMembers.length < 1) {
@@ -31,7 +30,7 @@ const GroupChat = ({ setGroup }) => {
 
             // Ensure logged-in user (authUser) is always part of the group
             const members = [...new Set([...groupMembers, authUser._id])];
-            console.log(members);
+            // console.log(members);
 
             let data = {
                 groupName,

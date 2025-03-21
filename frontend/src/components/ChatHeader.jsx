@@ -11,8 +11,6 @@ const ChatHeader = () => {
     return (
         <div className="p-2.5 border-b border-base-300  ">
             <div className='flex justify-between items-center  ' >
-                {/* profile */}
-
                 <div className="flex gap-3 items-center ">
                     {/* avatar info */}
                     <div className="avatar">
@@ -26,7 +24,7 @@ const ChatHeader = () => {
                         <h3 className='font-medium capitalize  '>{selectedUser?.fullName || selectedUser.name}</h3>
                         <p className="text-sm text-base-content/70 flex gap-1 ">
                             {selectedUser?.members ? selectedUser.members.map((user) => (
-                                <span>{`${user.fullName},`}</span>
+                                <span key={user._id} >{`${user.fullName},`}</span>
                             )) :
                                 <div>
                                     {onlineUsers.includes(selectedUser?._id) ? "Online" : "Offline"}
@@ -35,7 +33,6 @@ const ChatHeader = () => {
                         </p>
                     </div>
                 </div>
-
                 {/* close button */}
                 <button onClick={() => setSelectedUser(null)} className='cursor-pointer' >
                     <X />

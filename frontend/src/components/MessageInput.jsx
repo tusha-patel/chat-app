@@ -1,5 +1,5 @@
 import { ChevronDown, CircleX, File, Image, Send, ShieldClose, Smile, X } from 'lucide-react';
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore';
 import { useGroupStore } from '../store/useGroupStore';
@@ -7,15 +7,24 @@ import { formatMessageDay } from '../lib/Utils';
 import renderFile from '../lib/file';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
-const MessageInput = ({ replyMsg, setReplyMsg }) => {
+const MessageInput = ({ replyMsg, setReplyMsg, editMessage, setEditMessage }) => {
     const [text, setText] = useState("");
     const [imagePreview, setImagePreview] = useState(null)
     const fileInputRef = useRef(null);
-    const { sendMessage, selectedUser } = useChatStore();
-    const { sendGroupMessage } = useGroupStore();
+    const { sendMessage, selectedUser, updateMessage } = useChatStore();
+    const { sendGroupMessage, updateGroupMessage } = useGroupStore();
     const fileRef = useRef(null);
     const [file, setFile] = useState(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+    // setEditMessage
+    useEffect(() => {
+        if (editMessage) {
+            setText(editMessage.text || editMessage.message);
+        } else {
+            setText('');
+        }
+    }, [editMessage])
 
 
     // get the image
@@ -70,7 +79,6 @@ const MessageInput = ({ replyMsg, setReplyMsg }) => {
         e.preventDefault();
         if (!text.trim() && !imagePreview && !file) return;
         try {
-
             const messageData = {
                 text: text.trim(),
                 image: imagePreview,
@@ -78,14 +86,26 @@ const MessageInput = ({ replyMsg, setReplyMsg }) => {
                 groupId: selectedUser._id,
                 groupName: selectedUser?.name,
             };
-
             if (replyMsg) {
                 messageData.replyMsg = replyMsg._id;
             }
-            if (selectedUser?.members) {
-                await sendGroupMessage(messageData);
+            if (editMessage) {
+                let data = {
+                    messageId: editMessage._id,
+                    text: text
+                }
+                if (selectedUser?.members) {
+                    updateGroupMessage(data)
+                } else {
+                    await updateMessage(data);
+                }
+                setEditMessage("")
             } else {
-                await sendMessage(messageData);
+                if (selectedUser?.members) {
+                    await sendGroupMessage(messageData);
+                } else {
+                    await sendMessage(messageData);
+                }
             }
 
             // clear form
@@ -93,7 +113,7 @@ const MessageInput = ({ replyMsg, setReplyMsg }) => {
             setText("");
             setImagePreview(null);
             setFile(null);
-            setShowEmojiPicker(false)
+            setShowEmojiPicker(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
             if (fileRef) fileRef.current.value = "";
         } catch (error) {
@@ -136,8 +156,8 @@ const MessageInput = ({ replyMsg, setReplyMsg }) => {
                     {showEmojiPicker && (
                         <div
                             className="absolute bottom-12 left-0 z-50"
-                            tabIndex={0} // Make it focusable
-                            onBlur={() => setShowEmojiPicker(false)} // Hide when losing focus
+                            tabIndex={0}
+                            onBlur={() => setShowEmojiPicker(false)}
                         >
                             <Picker data={data} onEmojiSelect={addEmoji} theme="light" />
                         </div>
@@ -193,7 +213,6 @@ const MessageInput = ({ replyMsg, setReplyMsg }) => {
                 <button type='submit' data-tip="Send Message" className='btn btn-sm sm:btn-md  btn-circle tooltip tooltip-left' disabled={!text.trim() && !imagePreview && !file}  >
                     <Send size={22} />
                 </button>
-                {/* </div> */}
             </form>
         </div>
     )

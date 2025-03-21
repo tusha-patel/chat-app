@@ -28,9 +28,18 @@ io.on("connection", (socket) => {
     // Emit list of online users
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
+    // join the group
     socket.on("joinGroup", (groupId) => {
         // console.log(`User ${userId} joined group ${groupId}`);
         socket.join(groupId);
+    });
+
+    // for leave group
+    socket.on("leaveGroup", (groupId) => {
+        if (!userId) return;
+        if (socket.rooms.has(groupId)) {  // Check if user is actually in the group before leaving
+            socket.leave(groupId);
+        }
     });
 
     socket.on("disconnect", () => {
