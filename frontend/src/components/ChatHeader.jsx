@@ -22,14 +22,12 @@ const ChatHeader = () => {
                     {/* user content */}
                     <div>
                         <h3 className='font-medium capitalize  '>{selectedUser?.fullName || selectedUser.name}</h3>
-                        <p className="text-sm text-base-content/70 flex gap-1 ">
-                            {selectedUser?.members ? selectedUser.members.map((user) => (
-                                <span key={user._id} >{`${user.fullName},`}</span>
-                            )) :
-                                <div>
-                                    {onlineUsers.includes(selectedUser?._id) ? "Online" : "Offline"}
-                                </div>
-                            }
+                        <p className="text-sm text-base-content/70 flex gap-1">
+                            {selectedUser?.members?.length > 0 ? (
+                                <span className='capitalize' >{selectedUser.members.map(user => user.fullName).join(", ")}</span>
+                            ) : (
+                                <span>{onlineUsers.includes(selectedUser?._id) ? "Online" : "Offline"}</span>
+                            )}
                         </p>
                     </div>
                 </div>

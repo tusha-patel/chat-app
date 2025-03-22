@@ -9,14 +9,17 @@ export const getUserForSidebar = async (req, res) => {
     try {
         const loggedInUserId = req.user._id;
 
-        // find All user without loggedIn user
-        const filterUser = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
-        res.status(200).json(filterUser)
+        // Find all users except the logged-in user
+        const users = await User.find({ _id: { $ne: loggedInUserId } })
+            .select("-password")
+            .lean();
+
+        res.status(200).json(users);
     } catch (error) {
-        console.log("Error from getUser controller ", error.message);
+        console.log("Error in getUsers controller:", error.message);
         res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 // get selected users messages
 export const getMessages = async (req, res) => {
@@ -29,14 +32,15 @@ export const getMessages = async (req, res) => {
         const message = await Message.find({
             $or: [
                 { senderId: myId, receiverId: userToChatId },
-                { senderId: userToChatId, receiverId: myId }
-            ]
+                { senderId: userToChatId, receiverId: myId },
+            ],
+            isDeleted: false
         }).populate("senderId", "fullName").populate({
-            path: "replyMsg",
+            path: "replyOff",
             select: ["text", "image", "file", "createdAt"],
             populate: {
                 path: "senderId",
-                select: "fullName" // Populate sender fullName inside replyMsg
+                select: "fullName" // Populate sender fullName inside replyOff
             }
         });
         res.status(200).json(message);
@@ -49,19 +53,20 @@ export const getMessages = async (req, res) => {
 // sendMessage 
 export const sendMessage = async (req, res) => {
     try {
-        const { text, image, file, replyMsg } = req.body;
+        const { text, image, file, replyOff } = req.body;
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
 
-        // upload image to cloudinary
+        // Upload image to Cloudinary
         let imageUrl, fileUrl;
         if (image) {
             const uploadResponse = await cloudinary.uploader.upload(image);
             imageUrl = uploadResponse.secure_url;
         }
 
+        // Upload file to Cloudinary
         if (file) {
-            if (file && file.size > 100 * 1024 * 1024) {
+            if (file.size > 100 * 1024 * 1024) {
                 return res.status(413).json({ message: "File size exceeds 100MB limit." });
             }
             const fileExt = path.extname(file.name); // Extract extension
@@ -70,66 +75,125 @@ export const sendMessage = async (req, res) => {
                 folder: "chat_app",
                 use_filename: true,
                 unique_filename: false,
-                format: fileExt.substring(1) // Ensure correct extension
+                format: fileExt.substring(1), // Ensure correct extension
             });
             fileUrl = uploadResponse.secure_url;
         }
 
+        // Create the new message
         const newMessage = new Message({
             senderId,
             receiverId,
             text,
             image: imageUrl,
             file: file ? { url: fileUrl, name: file.name } : null,
-            replyMsg: replyMsg ? replyMsg : null,
+            replyOff: replyOff ? replyOff : null,
         });
 
+        // Save the new message
         await newMessage.save();
+
+        // Populate the sender and receiver details
         const populatedMessage = await Message.findById(newMessage._id)
             .populate({
-                path: "replyMsg",
+                path: "replyOff",
                 select: ["text", "image", "file", "createdAt"],
                 populate: {
                     path: "senderId",
                     select: "fullName",
                 },
             })
-            .populate("senderId", "fullName");
+            .populate("senderId", "fullName")
+            .populate("receiverId", "fullName");
 
-        // Real-time functionality using Socket.io
+        // Update the last message for the sender and receiver
+        await User.findByIdAndUpdate(senderId, {
+            lastMessage: text || (file ? file.name : null) || (image ? "photo" : null),
+            lastMessageTime: newMessage.createdAt,
+        });
+
+        await User.findByIdAndUpdate(receiverId, {
+            lastMessage: text || (file ? file.name : null) || (image ? "photo" : null),
+            lastMessageTime: newMessage.createdAt,
+        });
+
+        // Emit the new message to both sender and receiver
+        const senderSocketId = getReceiverSocketId(senderId);
         const receiverSocketId = getReceiverSocketId(receiverId);
+
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("newMessage", populatedMessage);
+        }
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("newMessage", populatedMessage);
         }
 
         res.status(200).json(populatedMessage);
     } catch (error) {
-        console.log("Error in sendMessage controller : ", error.message);
-        res.status(500).json({ message: "internal server message" })
+        console.log("Error in sendMessage controller:", error.message);
+        res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 
 // deleteMessage
 export const deleteMessage = async (req, res) => {
     try {
         const { id } = req.params;
-        const message = await Message.findByIdAndDelete(id);
+        const message = await Message.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
 
         if (!message) {
-            return res.status(400).json({
-                message: "This message not removed ! plz try again"
-            });
+            return res.status(400).json({ message: "This message was not removed! Please try again." });
         }
-        // Emit the event to notify users about the deleted message
-        io.emit("messageDeleted", { messageId: id });
-        res.status(200).json(message);
 
+        // Find sender and receiver IDs
+        const { senderId, receiverId } = message;
+
+        // Find the last message for both sender and receiver
+        const lastMessageForSender = await Message.findOne({
+            $or: [
+                { senderId: senderId, receiverId: receiverId },
+                { senderId: receiverId, receiverId: senderId },
+            ],
+            isDeleted: false
+        })
+            .sort({ createdAt: -1 })
+            .select("text createdAt file image")
+            .lean();
+
+        // Update the last message for the sender and receiver in the database
+        await User.findByIdAndUpdate(senderId, {
+            lastMessage: lastMessageForSender ? lastMessageForSender.text || lastMessageForSender?.file?.name || lastMessageForSender?.image : null,
+            lastMessageTime: lastMessageForSender ? lastMessageForSender.createdAt : null,
+        });
+
+        await User.findByIdAndUpdate(receiverId, {
+            lastMessage: lastMessageForSender ? lastMessageForSender.text || lastMessageForSender?.file?.name || lastMessageForSender?.image : null,
+            lastMessageTime: lastMessageForSender ? lastMessageForSender.createdAt : null,
+        });
+
+        // Emit the deletion event to both sender and receiver
+        io.to(getReceiverSocketId(senderId)).emit("messageDeleted", {
+            messageId: id,
+            lastMessage: lastMessageForSender ? lastMessageForSender.text || lastMessageForSender?.file?.name || lastMessageForSender?.image : null,
+            lastMessageTime: lastMessageForSender ? lastMessageForSender.createdAt : null,
+            chatUserId: receiverId
+        });
+
+        io.to(getReceiverSocketId(receiverId)).emit("messageDeleted", {
+            messageId: id,
+            lastMessage: lastMessageForSender ? lastMessageForSender.text || lastMessageForSender?.file?.name || lastMessageForSender?.image : null,
+            lastMessageTime: lastMessageForSender ? lastMessageForSender.createdAt : null,
+            chatUserId: senderId
+        });
+
+        res.status(200).json({ message: "Message deleted successfully" });
     } catch (error) {
-        console.log("Error in deleteMessage controller : ", error.message);
-        res.status(500).json({ message: "internal server message" })
+        console.log("Error in deleteMessage controller: ", error.message);
+        res.status(500).json({ message: "Internal server error" });
     }
-}
+};
+
 
 // updateMessage
 export const updateMessage = async (req, res) => {
@@ -146,7 +210,7 @@ export const updateMessage = async (req, res) => {
         const updateMessage = await Message.findByIdAndUpdate(messageId, {
             text: text
         }, { new: true }).populate({
-            path: "replyMsg",
+            path: "replyOff",
             select: ["text", "image", "file", "createdAt"],
             populate: {
                 path: "senderId",

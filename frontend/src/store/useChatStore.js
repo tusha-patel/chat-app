@@ -15,6 +15,8 @@ export const useChatStore = create((set, get) => ({
         set({ isUsersLoading: true })
         try {
             const res = await axiosInstance.get("/messages/users");
+            console.log(res);
+
             set({ users: res.data });
         } catch (error) {
             console.log("error in getUsers from useChatStore", error);
@@ -30,7 +32,7 @@ export const useChatStore = create((set, get) => ({
         set({ isMessagesLoading: true });
         try {
             const res = await axiosInstance.get(`/messages/${userId}`);
-            // console.log(res);
+            console.log(res);
             set({ messages: res.data });
         } catch (error) {
             console.log("error from getMessages in useChatStore", error);
@@ -79,45 +81,60 @@ export const useChatStore = create((set, get) => ({
     // live message send user using socket io
     // Subscribe to new messages and deletions
     subscribeToMessage: () => {
-        const { selectedUser } = get();
-        if (!selectedUser) return;
-
         const socket = useAuthStore.getState().socket;
-        // Listen for new message 
+
+        // Listen for new messages
         socket.on("newMessage", (newMessage) => {
-            const isMessageSentFromSelectedUser = newMessage.senderId._id === selectedUser._id;
-            // console.log(newMessage);
-            if (!isMessageSentFromSelectedUser) return;
-            if (!newMessage.groupId) {
-                set((state) => ({
-                    messages: [
-                        ...state.messages,
-                        { ...newMessage, replyMsg: newMessage.replyMsg || null },
-                    ],
-                }));
-            }
-        });
-
-        // Listen for message deletions
-        socket.on("messageDeleted", ({ messageId }) => {
-            // console.log(messageId);
-
             set((state) => ({
-                messages: state.messages.filter(msg => msg._id !== messageId)
-            }));
-        });
-
-        //Listen for message updated
-        socket.on("messageEdited", (updatedMessage) => {
-            // console.log(updatedMessage);
-
-            set((state) => ({
-                messages: state.messages.map((msg) =>
-                    msg._id === updatedMessage._id ? updatedMessage : msg
+                messages: [
+                    ...state.messages,
+                    { ...newMessage, replyOff: newMessage.replyOff || null },
+                ],
+                users: state.users.map((user) =>
+                    user._id === newMessage.senderId._id || user._id === newMessage.receiverId._id
+                        ? {
+                            ...user,
+                            lastMessage: newMessage.text || (newMessage.file ? newMessage.file.name : null) || (newMessage.image ? "photo" : null),
+                            lastMessageTime: newMessage.createdAt,
+                        }
+                        : user
                 ),
             }));
         });
 
+        // Listen for message deletions
+        socket.on("messageDeleted", ({ messageId, lastMessage, lastMessageTime, chatUserId }) => {
+            set((state) => ({
+                messages: state.messages.filter((msg) => msg._id !== messageId),
+                users: state.users.map((user) =>
+                    user._id === chatUserId
+                        ? {
+                            ...user,
+                            lastMessage: lastMessage,
+                            lastMessageTime: lastMessageTime,
+                        }
+                        : user
+                ),
+            }));
+        });
+
+        // Listen for message updates
+        socket.on("messageEdited", (updatedMessage) => {
+            set((state) => ({
+                messages: state.messages.map((msg) =>
+                    msg._id === updatedMessage._id ? updatedMessage : msg
+                ),
+                users: state.users.map((user) =>
+                    user._id === updatedMessage.senderId._id || user._id === updatedMessage.receiverId._id
+                        ? {
+                            ...user,
+                            lastMessage: updatedMessage.text,
+                            lastMessageTime: updatedMessage.createdAt,
+                        }
+                        : user
+                ),
+            }));
+        });
     },
 
     // Unsubscribe from events

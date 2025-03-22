@@ -11,7 +11,7 @@ const getFileType = (fileUrl) => {
 
 // Render file-specific UI
 const renderFile = (file) => {
-    console.log(file);
+    // console.log(file);
 
     if (!file || !file.url) return null;
 
@@ -22,13 +22,13 @@ const renderFile = (file) => {
     switch (fileType) {
         case 'pdf':
             return (
-                <a href={fileUrl} target="_blank" download={file.name} rel="noopener noreferrer" className="flex items-center gap-2 text-blue-500 hover:underline">
+                <a href={fileUrl} target="_blank" download={file.name} rel="noopener noreferrer" className="flex items-center gap-2 text-content hover:underline">
                     <File size={16} /> View PDF
                 </a>
             );
         case 'zip':
             return (
-                <a href={fileUrl} download={file.name} className="flex items-center gap-2 text-green-500 hover:underline">
+                <a href={fileUrl} download={file.name} className="flex items-center gap-2 text-content hover:underline">
                     <Download size={16} /> {file.name}
                 </a>
             );
@@ -38,7 +38,7 @@ const renderFile = (file) => {
             );
         default:
             return (
-                <a href={fileUrl} download={file.name} target="_blank" className="flex items-center gap-2 text-gray-400 hover:underline">
+                <a href={fileUrl} download={file.name} target="_blank" className="flex items-center gap-2 text-content/80  hover:underline">
                     <Download size={16} /> {file.name}
                 </a>
             );

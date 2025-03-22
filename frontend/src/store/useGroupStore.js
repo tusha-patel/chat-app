@@ -48,7 +48,7 @@ export const useGroupStore = create((set, get) => ({
                         ...state.groupMessages,
                         {
                             ...message,
-                            replyMsg: message.replyMsg || null,
+                            replyOff: message.replyOff || null,
                         },
                     ],
                 }));

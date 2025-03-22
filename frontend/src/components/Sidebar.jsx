@@ -17,6 +17,8 @@ const Sidebar = () => {
     const { getGroup, groups, listenForGroupUpdates } = useGroupStore();
     const [previousGroupId, setPreviousGroupId] = useState(null);
 
+
+
     // get the all users for side bar
     useEffect(() => {
         getUsers();
@@ -57,11 +59,11 @@ const Sidebar = () => {
     return (
         <aside className='h-full w-20 lg:w-64 border-r border-base-300 flex flex-col transition-all duration-200' >
             {/* filter online users */}
-            <button className={`w-full flex gap-3 items-center p-5 hover:bg-base-300  cursor-pointer transition-colors border-b border-base-300 `} >
+            <button className={`w-full flex gap-3 items-center p-5 py-[12px] lg:py-[10px] border-b border-base-300 `} >
                 <div className="relative mx-auto lg:mx-0 ">
                     {/* avatar section */}
                     <img src={currentUser?.profilePic || "/avatar.png"}
-                        className='size-11 object-cover rounded-full '
+                        className='size-10 object-cover rounded-full '
                         alt={currentUser.fullName} title={currentUser.fullName} />
 
                     {/* online user section */}
@@ -73,7 +75,7 @@ const Sidebar = () => {
                 </div>
 
                 {/* user info Only visible on larger screen */}
-                <div className="lg:block text-left">
+                <div className=" hidden lg:block text-left min-w-0 ">
                     <p className='capitalize font-medium truncate ' >{currentUser.fullName || currentUser.name}</p>
                     <div className="text-zinc-400 text-sm">
                         <span>Set a status</span>
@@ -91,7 +93,7 @@ const Sidebar = () => {
                         <SquarePlus />
                     </div>
                 </div>
-                {/* filter toggle */}
+                {/* // filter toggle */}
                 <div className="mt-3 hidden lg:flex ic' gap-2 ">
                     <label className='cursor-pointer flex items-center gap-2 '>
                         <input type="checkbox" checked={showOnlineOnly}
@@ -102,6 +104,9 @@ const Sidebar = () => {
                     </label>
                     <span>({onlineUsers.length - 1}online) </span>
                 </div>
+            </div>
+            <div>
+
             </div>
 
             {/* set all  users */}
@@ -138,7 +143,11 @@ const Sidebar = () => {
                                             <span key={user._id}>{`${user.fullName} `}</span>
                                         )) :
                                             <div>
-                                                {onlineUsers.includes(user?._id) ? "Online" : "Offline"}
+                                                {user.lastMessage ? (
+                                                    <span>{user.lastMessage}</span>
+                                                ) : (
+                                                    <span>No messages</span>
+                                                )}
                                             </div>
                                         }
                                     </div>

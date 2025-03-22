@@ -2,6 +2,7 @@
 import { getReceiverSocketId } from "../lib/socket.js";
 import Group from "../models/group.model.js";
 import { io } from "../lib/socket.js";
+import GroupMessage from "../models/groupMessages.model.js";
 
 // create a group
 export const createGroup = async (req, res) => {
@@ -42,9 +43,28 @@ export const createGroup = async (req, res) => {
 // get the all groups
 export const getGroup = async (req, res) => {
     try {
-        const group = await Group.find().populate('createdBy', 'fullName')
-            .populate('members', 'fullName');;
-        res.status(200).json(group);
+        const groups = await Group.find().populate('createdBy', 'fullName')
+            .populate('members', 'fullName');
+
+        const usersWithLastMessage = await Promise.all(
+            groups.map(async (group) => {
+                const lastMessage = await GroupMessage.findOne({
+                    groupId: group._id
+                }).sort({ createdAt: -1 })
+                    .select("text createdAt")
+                    .lean()
+                return {
+                    ...group.toObject(),
+                    lastMessage: lastMessage ? lastMessage.text : null,
+                    lastMessageTime: lastMessage ? lastMessage.createdAt : null
+                }
+            })
+        )
+
+
+
+
+        res.status(200).json(groups);
     } catch (error) {
         console.error('Error creating group:', error);
         res.status(500).json({ message: 'Internal server error' });

@@ -7,7 +7,7 @@ import path from "path"
 // send the meesage with group
 export const sendGroupMessage = async (req, res) => {
     try {
-        const { groupId, text, image, file, replyMsg } = req.body;
+        const { groupId, text, image, file, replyOff } = req.body;
 
         const userId = req.user._id;
 
@@ -41,14 +41,14 @@ export const sendGroupMessage = async (req, res) => {
             message: text,
             image: imageUrl,
             file: file ? { url: fileUrl, name: file.name } : null,
-            replyMsg: replyMsg ? replyMsg : null,
+            replyOff: replyOff ? replyOff : null,
         });
 
         await newMessage.save();
 
         const populatedMessage = await GroupMessage.findById(newMessage._id)
             .populate({
-                path: "replyMsg",
+                path: "replyOff",
                 select: ["message", "image", "file", "createdAt"],
                 populate: {
                     path: "senderId",
@@ -83,14 +83,14 @@ export const getGroupMessages = async (req, res) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        const messages = await GroupMessage.find({ groupId }).populate('senderId', 'fullName').populate({
-            path: "replyMsg",
+        const messages = await GroupMessage.find({ groupId, isDeleted: false }).populate('senderId', 'fullName').populate({
+            path: "replyOff",
             select: ["message", "image", "file", "createdAt"],
             populate: {
                 path: "senderId",
                 select: "fullName"
             }
-        });;
+        });
 
         res.status(200).json(messages);
     } catch (error) {
@@ -105,7 +105,9 @@ export const getGroupMessages = async (req, res) => {
 export const deleteGroupMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
-        const groupMessage = await GroupMessage.findByIdAndDelete(messageId);
+        const groupMessage = await GroupMessage.findByIdAndUpdate(messageId, {
+            isDeleted: true
+        }, { new: true });
 
         if (!groupMessage) {
             return res.status(400).json({
@@ -137,7 +139,7 @@ export const updateGroupMessage = async (req, res) => {
             { message: text },
             { new: true }
         ).populate('senderId', 'fullName').populate({
-            path: "replyMsg",
+            path: "replyOff",
             select: ["message", "image", "file", "createdAt"],
             populate: {
                 path: "senderId",

@@ -7,7 +7,7 @@ import { formatMessageDay } from '../lib/Utils';
 import renderFile from '../lib/file';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
-const MessageInput = ({ replyMsg, setReplyMsg, editMessage, setEditMessage }) => {
+const MessageInput = ({ replyOff, setreplyOff, editMessage, setEditMessage }) => {
     const [text, setText] = useState("");
     const [imagePreview, setImagePreview] = useState(null)
     const fileInputRef = useRef(null);
@@ -24,7 +24,10 @@ const MessageInput = ({ replyMsg, setReplyMsg, editMessage, setEditMessage }) =>
         } else {
             setText('');
         }
-    }, [editMessage])
+    }, [editMessage]);
+
+    // handleImage copy
+
 
 
     // get the image
@@ -86,8 +89,8 @@ const MessageInput = ({ replyMsg, setReplyMsg, editMessage, setEditMessage }) =>
                 groupId: selectedUser._id,
                 groupName: selectedUser?.name,
             };
-            if (replyMsg) {
-                messageData.replyMsg = replyMsg._id;
+            if (replyOff) {
+                messageData.replyOff = replyOff._id;
             }
             if (editMessage) {
                 let data = {
@@ -109,13 +112,13 @@ const MessageInput = ({ replyMsg, setReplyMsg, editMessage, setEditMessage }) =>
             }
 
             // clear form
-            setReplyMsg(null)
+            setreplyOff(null)
             setText("");
             setImagePreview(null);
             setFile(null);
             setShowEmojiPicker(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
-            if (fileRef) fileRef.current.value = "";
+            if (fileRef.current) fileRef.current.value = "";
         } catch (error) {
             console.log("Failed to send message:", error);
         }
@@ -140,16 +143,16 @@ const MessageInput = ({ replyMsg, setReplyMsg, editMessage, setEditMessage }) =>
             )}
             <form onSubmit={handleSendMessage} className='flex items-center gap-2' >
                 <div className={`flex-1 flex gap-2 relative `} >
-                    {replyMsg &&
+                    {replyOff &&
                         <div className='absolute flex justify-between p-3 space-y-1 shadow-2xl bottom-10 left-0 bg-base-300  rounded-md w-3/4 text-primary-content  ' >
                             <div>
-                                <div className='text-lg' >{replyMsg.text || replyMsg.message}</div>
-                                {replyMsg.file && <div className='py-2' >{renderFile(replyMsg.file)}</div>}
-                                <div >{replyMsg.image && <img src={replyMsg.image} alt="image" className='h-14 w-14 object-cover ' />} </div>
-                                <div className='text-sm' >{replyMsg.senderId.fullName}, <span className='text-[12px]' >{formatMessageDay(replyMsg.createdAt)}</span> </div>
+                                <div className='text-lg' >{replyOff.text || replyOff.message}</div>
+                                {replyOff.file && <div className='py-2' >{renderFile(replyOff.file)}</div>}
+                                <div >{replyOff.image && <img src={replyOff.image} alt="image" className='h-14 w-14 object-cover ' />} </div>
+                                <div className='text-sm' >{replyOff.senderId.fullName}, <span className='text-[12px]' >{formatMessageDay(replyOff.createdAt)}</span> </div>
                             </div>
                             <div>
-                                <CircleX className='cursor-pointer' onClick={() => setReplyMsg(null)} />
+                                <CircleX className='cursor-pointer' onClick={() => setreplyOff(null)} />
                             </div>
                         </div>}
 

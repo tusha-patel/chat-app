@@ -22,11 +22,15 @@ const groupMessageSchema = new mongoose.Schema({
         url: String,
         name: String,
     },
-    replyMsg: {
+    replyOff: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "GroupMessage",
         default: null,
     },
+    isDeleted: {
+        type: Boolean,
+        default: false,
+    }
 }, { timestamps: true });
 
 const GroupMessage = mongoose.model('GroupMessage', groupMessageSchema);
