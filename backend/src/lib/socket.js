@@ -30,12 +30,14 @@ io.on("connection", (socket) => {
 
     // join the group
     socket.on("joinGroup", (groupId) => {
-        // console.log(`User ${userId} joined group ${groupId}`);
+        console.log(`User ${userId} joined group ${groupId}`);
         socket.join(groupId);
-    });
+    }); 
 
     // for leave group
     socket.on("leaveGroup", (groupId) => {
+        console.log(`User ${userId} leave group ${groupId}`);
+
         if (!userId) return;
         if (socket.rooms.has(groupId)) {  // Check if user is actually in the group before leaving
             socket.leave(groupId);

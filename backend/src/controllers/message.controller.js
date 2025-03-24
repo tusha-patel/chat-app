@@ -10,8 +10,12 @@ export const getUserForSidebar = async (req, res) => {
         const loggedInUserId = req.user._id;
 
         // Find all users except the logged-in user
-        const users = await User.find({ _id: { $ne: loggedInUserId } })
-            .select("-password")
+         const users = await User.find({ _id: { $ne: loggedInUserId } })
+            .select("-password") // Exclude the password field
+            .populate({
+                path: "contacts.userId", // Path to populate
+                select: "fullName email profilePic", // Fields to include from the referenced User collection
+            })
             .lean();
 
         res.status(200).json(users);
@@ -27,6 +31,7 @@ export const getMessages = async (req, res) => {
         const { id: userToChatId } = req.params;
         const myId = req.user._id;
 
+        console.log(userToChatId);
 
         // find messages to filtering
         const message = await Message.find({
@@ -56,6 +61,8 @@ export const sendMessage = async (req, res) => {
         const { text, image, file, replyOff } = req.body;
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
+        console.log(receiverId, senderId);
+
 
         // Upload image to Cloudinary
         let imageUrl, fileUrl;

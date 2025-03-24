@@ -49,7 +49,8 @@ const GroupChat = ({ setGroup }) => {
 
     return (
         <div>
-            <input type='text' className='p-2 border border-base-300 w-full shadow-2xl rounded-xl ' value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder='Group Name' />
+            <input type='text' className='p-2 border border-base-300 w-full shadow-2xl rounded ' value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder='Group Name' />
+            <button onClick={handleCreateGroup} className='w-full bg-primary p-2 rounded mt-2 ' >Create Group</button>
             {users?.map((user) => (
                 <button key={user._id}
                     className={`w-full flex gap-3 items-center p-3 hover:bg-base-300  cursor-pointer transition-colors 
@@ -78,7 +79,7 @@ const GroupChat = ({ setGroup }) => {
                     </div>
                 </button>
             ))}
-            <button onClick={handleCreateGroup} className='w-full bg-primary p-2 rounded ' >Create Group</button>
+
         </div>
     )
 }

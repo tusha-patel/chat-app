@@ -27,8 +27,26 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    contacts: [{
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        status: {
+            type: String,
+            enum: ["pending", "accepted", "blocked"],
+            default: "pending"
+        }
+    }]
+
 }, { timestamps: true });
 
 
 const User = mongoose.model("User", userSchema);
 export default User;
+
+
+
+
+// "declined"

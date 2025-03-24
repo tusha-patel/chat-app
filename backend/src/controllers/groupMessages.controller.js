@@ -11,6 +11,7 @@ export const sendGroupMessage = async (req, res) => {
 
         const userId = req.user._id;
 
+
         const group = await Group.findById(groupId);
         if (!group) {
             return res.status(404).json({ message: 'Group not found' });
@@ -45,7 +46,6 @@ export const sendGroupMessage = async (req, res) => {
         });
 
         await newMessage.save();
-
         const populatedMessage = await GroupMessage.findById(newMessage._id)
             .populate({
                 path: "replyOff",
@@ -58,6 +58,7 @@ export const sendGroupMessage = async (req, res) => {
             .populate("senderId", "fullName");
 
         // Real-time functionality using Socket.io
+        // console.log("Emitting new message to group:", groupId, populatedMessage);
         io.to(groupId).emit("newMessage", populatedMessage);
         res.status(201).json(populatedMessage);
     } catch (error) {

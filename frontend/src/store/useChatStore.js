@@ -15,8 +15,7 @@ export const useChatStore = create((set, get) => ({
         set({ isUsersLoading: true })
         try {
             const res = await axiosInstance.get("/messages/users");
-            console.log(res);
-
+            // console.log(res);
             set({ users: res.data });
         } catch (error) {
             console.log("error in getUsers from useChatStore", error);
@@ -29,10 +28,12 @@ export const useChatStore = create((set, get) => ({
 
     // get messages
     getMessages: async (userId) => {
+        // console.log(userId);
+
         set({ isMessagesLoading: true });
         try {
             const res = await axiosInstance.get(`/messages/${userId}`);
-            console.log(res);
+            // console.log(res);
             set({ messages: res.data });
         } catch (error) {
             console.log("error from getMessages in useChatStore", error);

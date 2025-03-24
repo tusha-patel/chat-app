@@ -11,7 +11,7 @@ export const useAuthStore = create((set, get) => ({
     isSigningUp: false,
     isLoggIng: false,
     isUpdateProfile: false,
-
+    contacts: [],
     // online users
     onlineUsers: [],
 
@@ -23,7 +23,7 @@ export const useAuthStore = create((set, get) => ({
     checkAuth: async () => {
         try {
             const res = await axiosInstance.get("/auth/check");
-            console.log(res);
+            // console.log(res);
             set({ authUser: res.data });
             get().connectSocket();
         } catch (error) {
@@ -96,6 +96,52 @@ export const useAuthStore = create((set, get) => ({
             toast.error(error.response.data.message);
         } finally {
             set({ isUpdateProfile: false });
+        }
+    },
+
+    getUserContacts: async (userId) => {
+        try {
+            const res = await axiosInstance.get(`/auth/get_user_contacts/${userId}`);
+            console.log(res);
+            set({ contacts: res.data });
+        } catch (error) {
+            console.log("Error in getUserContacts", error);
+            toast.error(error.response.data.message);
+        }
+    },
+    // send contact request
+    sendContactRequest: async (receiverId) => {
+        try {
+            const res = await axiosInstance.post("/auth/send_request", { receiverId });
+            console.log(res);
+            toast.success("Contact request send");
+        } catch (error) {
+            console.log("Error in sendContactRequest", error);
+            toast.error(error.response.data.message);
+        }
+    },
+
+    handleContactRequest: async (senderId, action) => {
+        try {
+            const res = await axiosInstance.post("/auth/handle_request", { senderId, action });
+            console.log(res);
+            toast.success(`Request ${action}ed`);
+        } catch (error) {
+            console.log("Error in handleContactRequest", error);
+            toast.error(error.response.data.message);
+        }
+    },
+
+    // search user
+    searchUser: async (email) => {
+        try {
+            const res = await axiosInstance.get(`/auth/search?email=${email}`);
+            console.log(res);
+
+            return res.data;
+        } catch (error) {
+            console.log("Error in searchUser", error);
+            toast.error(error.response.data.message);
         }
     },
 

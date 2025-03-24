@@ -19,27 +19,41 @@ const ChatContainer = () => {
     let [replyOff, setreplyOff] = useState(null);
     const [editMessage, setEditMessage] = useState("");
 
+    // console.log(selectedUser);
 
-    // get the messages
-    useEffect(() => {
-        getMessages(selectedUser?._id);
-        subscribeToMessage()
-        return () => unsubscribeFromMessage()
-    }, [selectedUser?._id, getMessages, subscribeToMessage, unsubscribeFromMessage]);
+    // // get the messages
+    // useEffect(() => {
+    //     getMessages(selectedUser?._id);
+    //     subscribeToMessage()
+    //     return () => unsubscribeFromMessage()
+    // }, [selectedUser?._id, getMessages, subscribeToMessage, unsubscribeFromMessage]);
 
     // scroll to bottom whenever messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, groupMessages]);
-
-
-    // get the group messages
     useEffect(() => {
-        getGroupMessages(selectedUser?._id);
-        subscribeGroup();
-        return () => unsubscribeGroupMessage()
-    }, [getGroupMessages, selectedUser?._id, subscribeGroup, unsubscribeGroupMessage])
+        if (!selectedUser?._id) return;
 
+        if (isGroupChat) {
+            getGroupMessages(selectedUser._id);
+            subscribeGroup();
+            return () => unsubscribeGroupMessage();
+        } else {
+            getMessages(selectedUser._id);
+            subscribeToMessage();
+            return () => unsubscribeFromMessage();
+        }
+    }, [
+        selectedUser?._id,
+        isGroupChat,
+        getMessages,
+        getGroupMessages,
+        subscribeToMessage,
+        subscribeGroup,
+        unsubscribeFromMessage,
+        unsubscribeGroupMessage
+    ]);
     // copy the message
     const handleCopyClick = async ({ text }) => {
         try {
@@ -150,6 +164,7 @@ const ChatContainer = () => {
                         </div>
                     </div>
                 ))}
+                
                 <div ref={messagesEndRef}></div>
             </div>
             <MessageInput replyOff={replyOff} setreplyOff={setreplyOff} editMessage={editMessage} setEditMessage={setEditMessage} />

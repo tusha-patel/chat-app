@@ -43,6 +43,8 @@ export const useGroupStore = create((set, get) => ({
             // console.log(message);
 
             if (message.groupId) {
+                // console.log(message.groupId);
+
                 set((state) => ({
                     groupMessages: [
                         ...state.groupMessages,
@@ -78,6 +80,7 @@ export const useGroupStore = create((set, get) => ({
         set({ isGroupLoading: true });
         try {
             const res = await axiosInstance.get("/group/fetch");
+            // console.log(res);
             set({ groups: res.data })
             // set((state) => ({ groups: [...state.groups, res.data] }));
         } catch (error) {
@@ -133,8 +136,8 @@ export const useGroupStore = create((set, get) => ({
     updateGroupMessage: async ({ messageId, text }) => {
         try {
             console.log(messageId);
-            const res = await axiosInstance.put(`/group/message//update_group_message/${messageId}`, { text });
-            console.log(res);
+            await axiosInstance.put(`/group/message//update_group_message/${messageId}`, { text });
+            // console.log(res);
             toast.success("message update success")
             // set({ groupMessages: res.data });
         } catch (error) {
