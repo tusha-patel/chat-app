@@ -10,7 +10,7 @@ export const getUserForSidebar = async (req, res) => {
         const loggedInUserId = req.user._id;
 
         // Find all users except the logged-in user
-         const users = await User.find({ _id: { $ne: loggedInUserId } })
+        const users = await User.find({ _id: { $ne: loggedInUserId } })
             .select("-password") // Exclude the password field
             .populate({
                 path: "contacts.userId", // Path to populate
@@ -62,6 +62,34 @@ export const sendMessage = async (req, res) => {
         const { id: receiverId } = req.params;
         const senderId = req.user._id;
         console.log(receiverId, senderId);
+
+        //handle user first message
+        if (!receiverId || !senderId) {
+            return res.status(400).json({ message: "Receiver & senderId ID is required" });
+        }
+
+        const sender = await User.findById(senderId);
+        const receiver = await User.findById(receiverId);
+
+        if (!sender || !receiver) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const receiverContact = receiver.contacts.find(contact => contact.userId.equals(senderId));
+
+        const senderContact = sender.contacts.find(contact => contact.userId.equals(receiverId));
+
+        if (!senderContact) {
+            sender.contacts.push({ userId: receiverId, status: "pending" });
+        }
+
+        if (!receiverContact) {
+            receiver.contacts.push({ userId: senderId, status: "pending" });
+        }
+
+        await sender.save();
+        await receiver.save();
+
 
 
         // Upload image to Cloudinary
@@ -237,3 +265,4 @@ export const updateMessage = async (req, res) => {
         res.status(500).json({ message: "internal server message" });
     }
 }
+

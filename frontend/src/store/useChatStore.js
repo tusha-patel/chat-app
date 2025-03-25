@@ -9,6 +9,8 @@ export const useChatStore = create((set, get) => ({
     selectedUser: null,
     isUsersLoading: false,
     isMessagesLoading: false,
+    contactRequests: [],
+
 
 
     getUsers: async () => {
@@ -42,7 +44,6 @@ export const useChatStore = create((set, get) => ({
             set({ isMessagesLoading: false });
         }
     },
-
     // send the messages
     sendMessage: async (messageData) => {
         try {
@@ -86,6 +87,11 @@ export const useChatStore = create((set, get) => ({
 
         // Listen for new messages
         socket.on("newMessage", (newMessage) => {
+            // if (newMessage.showRequestModal) {
+            //     console.log(newMessage);
+            // }
+            console.log(newMessage);
+
             set((state) => ({
                 messages: [
                     ...state.messages,
@@ -136,13 +142,78 @@ export const useChatStore = create((set, get) => ({
                 ),
             }));
         });
+
+        // Listen for incoming requests
+        socket.on("pendingContactRequest", (data) => {
+            useChatStore.setState((state) => ({
+                contactRequests: [...state.contactRequests, data],
+            }));
+        });
+        socket.on("contactStatusUpdated", ({ senderId, receiverId, status }) => {
+            const { authUser } = get();
+            const isCurrentUserInvolved =
+                senderId === authUser._id || receiverId === authUser._id;
+
+            if (isCurrentUserInvolved) {
+                set((state) => ({
+                    users: state.users.map(user => {
+                        if (user._id === senderId || user._id === receiverId) {
+                            const updatedContacts = user.contacts.map(contact => {
+                                const contactUserId = contact.userId._id || contact.userId;
+                                if (
+                                    (contactUserId === senderId || contactUserId === receiverId) &&
+                                    contactUserId !== user._id
+                                ) {
+                                    return { ...contact, status };
+                                }
+                                return contact;
+                            });
+                            return { ...user, contacts: updatedContacts };
+                        }
+                        return user;
+                    }),
+                    selectedUser: state.selectedUser?._id === senderId ||
+                        state.selectedUser?._id === receiverId
+                        ? {
+                            ...state.selectedUser,
+                            contacts: state.selectedUser.contacts.map(contact => {
+                                const contactUserId = contact.userId._id || contact.userId;
+                                if (
+                                    (contactUserId === senderId || contactUserId === receiverId) &&
+                                    contactUserId !== state.selectedUser._id
+                                ) {
+                                    return { ...contact, status };
+                                }
+                                return contact;
+                            })
+                        }
+                        : state.selectedUser
+                }));
+            }
+
+        });
+    },
+    acceptContact: (senderId) => {
+        const socket = useAuthStore.getState().socket;
+        socket.emit("acceptContact", senderId);
+        set((state) => ({
+            contactRequests: state.contactRequests.filter((req) => req.senderId !== senderId),
+        }));
     },
 
+    blockContact: (senderId) => {
+        const socket = useAuthStore.getState().socket;
+        socket.emit("blockContact", senderId);
+        set((state) => ({
+            contactRequests: state.contactRequests.filter((req) => req.senderId !== senderId),
+        }));
+    },
     // Unsubscribe from events
     unsubscribeFromMessage: () => {
         const socket = useAuthStore.getState().socket;
         socket.off("newMessage");
         socket.off("messageDeleted");  // Remove listener on unmount
+        socket.off("contactStatusUpdated");
     },
 
 

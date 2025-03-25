@@ -2,6 +2,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs"
+import Message from "../models/message.model.js";
 
 // authentication controller
 
@@ -190,7 +191,6 @@ export const sendContactRequest = async (req, res) => {
     }
 };
 
-// Handle Accept or Block Contact Request
 export const handleContactRequest = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -200,7 +200,6 @@ export const handleContactRequest = async (req, res) => {
             return res.status(400).json({ message: "Invalid request data" });
         }
 
-        // Fetch both users (Receiver & Sender)
         const receiver = await User.findById(userId);
         const sender = await User.findById(senderId);
 
@@ -208,25 +207,32 @@ export const handleContactRequest = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // Find contact requests in both users
         const receiverContactIndex = receiver.contacts.findIndex(contact => contact.userId.toString() === senderId);
-        const senderContactIndex = sender.contacts.findIndex(contact => contact.userId.toString() === userId);
+        const senderContactIndex = sender.contacts.findIndex(contact => contact.userId.toString() === userId.toString());
 
         if (receiverContactIndex === -1 || senderContactIndex === -1) {
             return res.status(404).json({ message: "Contact request not found" });
         }
 
         if (action === "accept") {
-            // Update both users to "accepted"
             receiver.contacts[receiverContactIndex].status = "accepted";
             sender.contacts[senderContactIndex].status = "accepted";
         } else if (action === "block") {
-            // Remove the contact request from both users
             receiver.contacts.splice(receiverContactIndex, 1);
             sender.contacts.splice(senderContactIndex, 1);
+
+            // **Mark all previous messages as deleted**
+            await Message.updateMany(
+                {
+                    $or: [
+                        { senderId: senderId, receiverId: userId },
+                        { senderId: userId, receiverId: senderId }
+                    ]
+                },
+                { $set: { isDeleted: true } } // Set isDeleted to true
+            );
         }
 
-        // Save both users
         await receiver.save();
         await sender.save();
 

@@ -19,6 +19,7 @@ const Sidebar = () => {
     const [previousGroupId, setPreviousGroupId] = useState(null);
     const [searchEmail, setSearchEmail] = useState("");
     const [searchedUser, setSearchedUser] = useState(null);
+    const [activeTab, setActiveTab] = useState("Users");
     // console.log(searchedUser);
 
     // get the all users for side bar
@@ -55,7 +56,6 @@ const Sidebar = () => {
 
 
     // handleSearch
-
     const handleSearch = async (email) => {
         if (!email.trim()) {
             setSearchedUser([]);
@@ -71,6 +71,15 @@ const Sidebar = () => {
             contact.userId._id === currentUser._id && contact.status === "accepted"
         );
     });
+
+    const pendingContacts = users.filter(user =>
+        user.contacts?.some(contact =>
+            contact.userId._id == currentUser._id && contact.status === "pending"
+        )
+
+    );
+    // console.log(pendingContacts);
+
 
     const filteredUsers = showOnlineOnly ? acceptedContacts.filter(user => onlineUsers.includes(user._id)) : acceptedContacts;
 
@@ -109,7 +118,7 @@ const Sidebar = () => {
             <div className="w-full py-3 overflow-y-auto ">
                 {!group && (
                     <div className="tabs tabs-border  w-full ">
-                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Users" defaultChecked />
+                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Users" defaultChecked checked={activeTab === "Users"} onChange={() => setActiveTab("Users")} />
                         <div className="tab-content">
                             <div className="mt-3 hidden lg:flex items-center p-2 py-3 gap-2 border-b border-base-200  ">
                                 <label className='cursor-pointer flex items-center gap-2 '>
@@ -124,9 +133,15 @@ const Sidebar = () => {
                             {filteredUsers?.map((user) => (
                                 <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
                             ))}
+                            {pendingContacts?.map((user) => (
+                                <div key={user._id}>
+                                    <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
+                                </div>
+                            ))}
                         </div>
 
-                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Groups" />
+                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Groups" checked={activeTab === "Groups"}
+                            onChange={() => setActiveTab("Groups")} />
                         <div className="tab-content">
                             <button className='w-full flex gap-2 justify-center py-3 border border-base-300 rounded-xl mt-3 ' onClick={() => setGroup(!group)} >
                                 Create new Group<SquarePlus />
@@ -135,8 +150,9 @@ const Sidebar = () => {
                                 <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.name} />
                             ))}
                         </div>
-                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Contacts" />
-                        <div className="tab-content">
+                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Contacts" checked={activeTab === "Contacts"}
+                            onChange={() => setActiveTab("Contacts")} />
+                        <div className="tab-content" >
                             <div className="flex items-center  border border-white mt-3 rounded p-2 justify-between gap-2 ">
                                 <div >
                                     <Search size={20} />
@@ -146,8 +162,8 @@ const Sidebar = () => {
                                     placeholder='Search by email...'
                                     value={searchEmail}
                                     onChange={(e) => {
-                                        setSearchEmail(e.target.value); // Update the searchEmail state
-                                        handleSearch(e.target.value); // Trigger the debounced search
+                                        setSearchEmail(e.target.value);
+                                        handleSearch(e.target.value);
                                     }}
                                     className='w-full focus:outline-none flex-1'
                                 />
@@ -178,7 +194,7 @@ const Sidebar = () => {
                     </>
                 )}
                 {filteredUsers.length === 0 && (
-                    <div className='text-center text-zinc-500 py-4  ' >No Online users</div>
+                    <div className='text-center text-zinc-500 py-4'>No Online users</div>
                 )}
             </div>
         </aside>
