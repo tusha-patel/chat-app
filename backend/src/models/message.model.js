@@ -27,7 +27,16 @@ const messageSchema = new mongoose.Schema({
         ref: "Message",
         default: null,
     },
-    isDeleted: { type: Boolean, default: false }
+    isDeleted: { type: Boolean, default: false },
+    isContactRequest: {
+        type: Boolean,
+        default: false
+    },
+    requestStatus: {
+        type: String,
+        enum: ["pending", "accepted", "declined"],
+        default: "pending"
+    }
 }, { timestamps: true });
 
 const Message = mongoose.model("Message", messageSchema);

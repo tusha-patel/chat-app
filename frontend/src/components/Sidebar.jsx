@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useChatStore } from '../store/useChatStore'
 import SidebarSkeleton from './skeleton/SidebarSkeleton';
-import { Search, SquarePlus, Users } from 'lucide-react';
+import { LogIn, Search, SquarePlus, User, Users, X } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import GroupChat from './GroupChat';
 import { useGroupStore } from '../store/useGroupStore';
@@ -10,7 +10,8 @@ import UserDetails from './UserDetails';
 
 const Sidebar = () => {
     // fetch useChatStore;
-    const { getUsers, users, selectedUser, isUsersLoading } = useChatStore();
+    const { getUsers, users, selectedUser, isUsersLoading, pendingRequests, newContactRequest
+    } = useChatStore();
     // find the online user;
     const { onlineUsers, authUser: currentUser, socket, searchUser } = useAuthStore();
     const [showOnlineOnly, setShowOnlineOnly] = useState(false);
@@ -19,12 +20,17 @@ const Sidebar = () => {
     const [previousGroupId, setPreviousGroupId] = useState(null);
     const [searchEmail, setSearchEmail] = useState("");
     const [searchedUser, setSearchedUser] = useState(null);
+    const [showSearch, setShowSearch] = useState(false);
+    // const [incomingRequests, setIncomingRequests] = useState([]);
     // console.log(searchedUser);
 
     // get the all users for side bar
     useEffect(() => {
         getUsers();
-    }, [getUsers]);
+        if (socket) {
+            newContactRequest()
+        }
+    }, [getUsers, newContactRequest, socket]);
 
     // for new group create
     useEffect(() => {
@@ -40,22 +46,23 @@ const Sidebar = () => {
     useEffect(() => {
         if (!socket || !selectedUser?._id) return;
 
-        // Leave previous group if it exists and is different from the current one
+        // Leave previous user chat if it exists
         if (previousGroupId && previousGroupId !== selectedUser._id) {
             socket.emit("leaveGroup", previousGroupId);
         }
 
-        // Join the new group
+        // Join the new user's chat room
         socket.emit("joinGroup", selectedUser._id);
 
         // Update previous group ID
         setPreviousGroupId(selectedUser._id);
     }, [selectedUser, socket, previousGroupId]);
 
+    console.log(pendingRequests);
+
 
 
     // handleSearch
-
     const handleSearch = async (email) => {
         if (!email.trim()) {
             setSearchedUser([]);
@@ -71,6 +78,15 @@ const Sidebar = () => {
             contact.userId._id === currentUser._id && contact.status === "accepted"
         );
     });
+
+    const pendingContacts = users.filter(user =>
+        user.contacts?.some(contact =>
+            contact.userId._id === currentUser._id && contact.status === "pending"
+        )
+
+    );
+    console.log(pendingRequests);
+
 
     const filteredUsers = showOnlineOnly ? acceptedContacts.filter(user => onlineUsers.includes(user._id)) : acceptedContacts;
 
@@ -105,83 +121,143 @@ const Sidebar = () => {
                 </div>
             </button>
 
-            {/* set all  users */}
             <div className="w-full py-3 overflow-y-auto ">
-                {!group && (
-                    <div className="tabs tabs-border  w-full ">
-                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Users" defaultChecked />
-                        <div className="tab-content">
-                            <div className="mt-3 hidden lg:flex items-center p-2 py-3 gap-2 border-b border-base-200  ">
-                                <label className='cursor-pointer flex items-center gap-2 '>
-                                    <input type="checkbox" checked={showOnlineOnly}
-                                        onChange={(e) => setShowOnlineOnly(e.target.checked)}
-                                        className='checkbox checkbox-sm'
-                                    />
-                                    <span className='text-sm'>Show online only</span>
-                                </label>
-                                <span>({onlineUsers.length - 1}online) </span>
-                            </div>
-                            {filteredUsers?.map((user) => (
-                                <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
-                            ))}
+                <div className="flex items-center mb-2 border border-white rounded p-2 justify-between gap-2 " >
+                    <div onClick={() => setShowSearch(true)} className='flex gap-2 items-center' >
+                        <div >
+                            <Search size={20} />
                         </div>
-
-                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Groups" />
-                        <div className="tab-content">
-                            <button className='w-full flex gap-2 justify-center py-3 border border-base-300 rounded-xl mt-3 ' onClick={() => setGroup(!group)} >
-                                Create new Group<SquarePlus />
-                            </button>
-                            {userGroups?.map((user) => (
-                                <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.name} />
-                            ))}
-                        </div>
-                        <input type="radio" name="my_tabs_2" className="tab" aria-label="Contacts" />
-                        <div className="tab-content">
-                            <div className="flex items-center  border border-white mt-3 rounded p-2 justify-between gap-2 ">
-                                <div >
-                                    <Search size={20} />
-                                </div>
-                                <input
-                                    type="search"
-                                    placeholder='Search by email...'
-                                    value={searchEmail}
-                                    onChange={(e) => {
-                                        setSearchEmail(e.target.value); // Update the searchEmail state
-                                        handleSearch(e.target.value); // Trigger the debounced search
-                                    }}
-                                    className='w-full focus:outline-none flex-1'
-                                />
-                            </div>
-                            {/* Display searched user (Contacts Tab) */}
-                            {searchedUser && (
-                                searchedUser?.map((user) => (
-                                    <div className="mt-3" key={user._id} >
-                                        <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
-                                    </div>
-                                ))
-                            )}
-                            {filteredUsers?.map((user) => (
-                                <div className='mt-3' key={user._id} >
-                                    <div className="">
-                                        My contacts
-                                    </div>
-                                    <UserDetails _id={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
-                                </div>
-                            ))}
-                        </div>
+                        <input
+                            type="text"
+                            placeholder='Search by email...'
+                            value={searchEmail}
+                            onClick={() => setShowSearch(false)}
+                            onChange={(e) => {
+                                setSearchEmail(e.target.value);
+                                handleSearch(e.target.value);
+                            }}
+                            className='w-full focus:outline-none flex-1'
+                        />
                     </div>
-                )
-                }
+                    <button className={` ${showSearch ? "block" : "hidden"} cursor-pointer `} onClick={() => {
+                        setShowSearch(false)
+                        setSearchEmail("")
+                    }
+                    } >
+                        <X />
+                    </button>
+                </div>
+                {showSearch ? (
+                    <div>
+                        {(searchedUser?.length > 0 ||
+                            filteredUsers.some(user => user.fullName.toLowerCase().includes(searchEmail.toLowerCase()))) ? (
+                            <div onClick={() => {
+                                setShowSearch(false);
+                                setSearchEmail("");
+                            }}>
+                                {searchedUser
+                                    ?.filter(user => !filteredUsers.some(contact => contact._id === user._id))
+                                    .map(user => (
+                                        <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
+                                    ))}
+
+                                {/* Show matching contacts */}
+                                {filteredUsers
+                                    ?.filter(user => user.fullName.toLowerCase().includes(searchEmail.toLowerCase()))
+                                    .map(user => (
+                                        <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
+                                    ))}
+                            </div>
+                        ) : (
+                            <div className='text-center text-zinc-500 pt-2 ' >User not Here</div>
+                        )}
+                    </div>
+                ) :
+                    (
+                        <div>
+                            {!group && (
+                                <div className="tabs tabs-border  w-full ">
+                                    <input type="radio" name="my_tabs_2" className="tab" aria-label="Users" defaultChecked />
+                                    <div className="tab-content">
+                                        <div className="mt-3 hidden lg:flex items-center p-2 py-3 gap-2 border-b border-base-200  ">
+                                            <label className='cursor-pointer flex items-center gap-2 '>
+                                                <input type="checkbox" checked={showOnlineOnly}
+                                                    onChange={(e) => setShowOnlineOnly(e.target.checked)}
+                                                    className='checkbox checkbox-sm'
+                                                />
+                                                <span className='text-sm'>Show online only</span>
+                                            </label>
+                                            <span>({onlineUsers.length - 1}online) </span>
+                                        </div>
+                                        {filteredUsers.length > 0 && (
+                                            <>
+                                                {filteredUsers?.map((user) => (
+                                                    <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
+                                                ))}
+                                            </>
+                                        )}
+                                        {
+                                            pendingContacts.length > 0 && (
+                                                <>
+                                                    {pendingContacts?.map((user) => (
+                                                        <div key={user._id}>
+                                                            <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            )
+                                        }
+                                        {pendingRequests.length > 0 && (
+                                            <>
+                                                {pendingRequests?.map((request) => (
+                                                    <div key={request.senderId._id}>
+                                                        <UserDetails
+                                                            profilePic={request.senderId.profilePic}
+                                                            user={request.senderId}
+                                                            name={request.senderId.fullName}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    <input type="radio" name="my_tabs_2" className="tab" aria-label="Groups" />
+                                    <div className="tab-content">
+                                        <button className='w-full flex gap-2 justify-center py-3 border border-base-300 rounded-xl mt-3 ' onClick={() => setGroup(!group)} >
+                                            Create new Group<SquarePlus />
+                                        </button>
+                                        {userGroups?.map((user) => (
+                                            <UserDetails key={user._id} profilePic={user.profilePic} user={user} name={user.name} />
+                                        ))}
+                                    </div>
+                                    <input type="radio" name="my_tabs_2" className="tab" aria-label="Contacts" />
+                                    <div className="tab-content">
+                                        <div className="px-3 text-lg">
+                                            My contacts
+                                        </div>
+                                        {filteredUsers?.map((user) => (
+                                            <div className='' key={user._id} >
+                                                <UserDetails _id={user._id} profilePic={user.profilePic} user={user} name={user.fullName} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                            }
+                        </div>
+                    )}
+
                 {group && (
                     <>
                         <GroupChat setGroup={setGroup} />
                     </>
                 )}
                 {filteredUsers.length === 0 && (
-                    <div className='text-center text-zinc-500 py-4  ' >No Online users</div>
+                    <div className='text-center text-zinc-500 py-3  ' >No Online users</div>
                 )}
             </div>
-        </aside>
+        </aside >
     )
 }
 

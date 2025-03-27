@@ -196,7 +196,7 @@ export const handleContactRequest = async (req, res) => {
         const userId = req.user._id;
         const { senderId, action } = req.body;
 
-        if (!userId || !senderId || !["accept", "block"].includes(action)) {
+        if (!userId || !senderId || !["accept", "declined"].includes(action)) {
             return res.status(400).json({ message: "Invalid request data" });
         }
 
@@ -220,7 +220,9 @@ export const handleContactRequest = async (req, res) => {
             // Update both users to "accepted"
             receiver.contacts[receiverContactIndex].status = "accepted";
             sender.contacts[senderContactIndex].status = "accepted";
-        } else if (action === "block") {
+        } else if (action === "declined") {
+            console.log(action);
+
             // Remove the contact request from both users
             receiver.contacts.splice(receiverContactIndex, 1);
             sender.contacts.splice(senderContactIndex, 1);

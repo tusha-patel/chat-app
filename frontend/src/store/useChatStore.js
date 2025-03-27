@@ -9,6 +9,7 @@ export const useChatStore = create((set, get) => ({
     selectedUser: null,
     isUsersLoading: false,
     isMessagesLoading: false,
+    pendingRequests: [], // Store new contact requests
 
 
     getUsers: async () => {
@@ -79,6 +80,32 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
+    getPendingUsers: async (selectedUserId) => {
+        try {
+            const response = await axiosInstance.get(`/messages/pending_requests/${selectedUserId}`);
+            console.log(response);
+            return response.data
+
+        } catch (error) {
+            console.log("Error checking pending request:", error);
+        }
+    },
+
+    handleContactRequest: async (pendingRequestId, action) => {
+        // console.log(pendingRequestId, action);
+
+        try {
+            let res = await axiosInstance.post("/messages/handle_request", {
+                messageId: pendingRequestId,
+                action: action
+            });
+
+            return res
+        } catch (error) {
+            console.log("Error accepting request:", error);
+            toast.error("Failed to accept request");
+        }
+    },
     // live message send user using socket io
     // Subscribe to new messages and deletions
     subscribeToMessage: () => {
@@ -86,21 +113,35 @@ export const useChatStore = create((set, get) => ({
 
         // Listen for new messages
         socket.on("newMessage", (newMessage) => {
-            set((state) => ({
-                messages: [
-                    ...state.messages,
-                    { ...newMessage, replyOff: newMessage.replyOff || null },
-                ],
-                users: state.users.map((user) =>
-                    user._id === newMessage.senderId._id || user._id === newMessage.receiverId._id
-                        ? {
-                            ...user,
-                            lastMessage: newMessage.text || (newMessage.file ? newMessage.file.name : null) || (newMessage.image ? "photo" : null),
-                            lastMessageTime: newMessage.createdAt,
-                        }
-                        : user
-                ),
-            }));
+            set((state) => {
+                const { selectedUser } = state;
+
+                // Only add messages that belong to the currently selected chat
+                if (
+                    selectedUser &&
+                    (newMessage.senderId._id === selectedUser._id || newMessage.receiverId._id === selectedUser._id)
+                ) {
+                    return {
+                        messages: [
+                            ...state.messages,
+                            { ...newMessage, replyOff: newMessage.replyOff || null },
+                        ],
+                        users: state.users.map((user) =>
+                            user._id === newMessage.senderId._id || user._id === newMessage.receiverId._id
+                                ? {
+                                    ...user,
+                                    lastMessage: newMessage.text ||
+                                        (newMessage.file ? newMessage.file.name : null) ||
+                                        (newMessage.image ? "photo" : null),
+                                    lastMessageTime: newMessage.createdAt,
+                                }
+                                : user
+                        ),
+                    };
+                }
+
+                return {}; // Return unchanged state if message is not for selected user
+            });
         });
 
         // Listen for message deletions
@@ -136,7 +177,59 @@ export const useChatStore = create((set, get) => ({
                 ),
             }));
         });
+
+        // Listen for contact request decline
+
     },
+
+    newContactRequest: () => {
+        const socket = useAuthStore.getState().socket;
+
+        socket.on("newContactRequest", (newContact) => {
+            set((state) => {
+                // Ensure the request is not duplicated
+                const exists = state.pendingRequests.some(
+                    (request) => request.senderId._id === newContact.senderId._id
+                );
+                if (!exists) {
+                    return {
+                        pendingRequests: [...state.pendingRequests, newContact],
+                    };
+                }
+                return state;
+            });
+        });
+        socket.on("contactRequestAccepted", ({ receiverId, newContact }) => {
+            console.log("Request Accepted:", receiverId);
+
+            set((state) => ({
+                contacts: [...state.contacts, receiverId],
+                users: [...state.users, newContact],
+                pendingRequests: state.pendingRequests.filter((request) => request.senderId._id !== receiverId),
+            }));
+
+            toast.success("Contact request accepted! You are now connected.");
+        });
+
+        socket.on("contactRequestDeclined", ({ senderId }) => {
+            console.log("Request Declined:", senderId);
+
+            set((state) => ({
+                pendingRequests: state.pendingRequests.filter((request) => request.senderId._id !== senderId),
+                users: state.users.filter((user) => user._id !== senderId), // Remove from sidebar live
+                selectedUser: null
+            }));
+        });
+    },
+
+
+
+    // Add this function to clear requests after they're handled
+    // clearContactRequest: (requestId) => {
+    //     set(state => ({
+    //         incomingRequests: state.incomingRequests?.filter(req => req._id !== requestId)
+    //     }));
+    // },
 
     // Unsubscribe from events
     unsubscribeFromMessage: () => {

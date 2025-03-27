@@ -110,27 +110,27 @@ export const useAuthStore = create((set, get) => ({
         }
     },
     // send contact request
-    sendContactRequest: async (receiverId) => {
-        try {
-            const res = await axiosInstance.post("/auth/send_request", { receiverId });
-            console.log(res);
-            toast.success("Contact request send");
-        } catch (error) {
-            console.log("Error in sendContactRequest", error);
-            toast.error(error.response.data.message);
-        }
-    },
+    // sendContactRequest: async (receiverId) => {
+    //     try {
+    //         const res = await axiosInstance.post("/auth/send_request", { receiverId });
+    //         console.log(res);
+    //         toast.success("Contact request send");
+    //     } catch (error) {
+    //         console.log("Error in sendContactRequest", error);
+    //         toast.error(error.response.data.message);
+    //     }
+    // },
 
-    handleContactRequest: async (senderId, action) => {
-        try {
-            const res = await axiosInstance.post("/auth/handle_request", { senderId, action });
-            console.log(res);
-            toast.success(`Request ${action}ed`);
-        } catch (error) {
-            console.log("Error in handleContactRequest", error);
-            toast.error(error.response.data.message);
-        }
-    },
+    // handleContactRequest: async (senderId, action) => {
+    //     try {
+    //         const res = await axiosInstance.post("/auth/handle_request", { senderId, action });
+    //         console.log(res);
+    //         toast.success(`Request ${action}ed`);
+    //     } catch (error) {
+    //         console.log("Error in handleContactRequest", error);
+    //         toast.error(error.response.data.message);
+    //     }
+    // },
 
     // search user
     searchUser: async (email) => {
@@ -141,7 +141,6 @@ export const useAuthStore = create((set, get) => ({
             return res.data;
         } catch (error) {
             console.log("Error in searchUser", error);
-            toast.error(error.response.data.message);
         }
     },
 
