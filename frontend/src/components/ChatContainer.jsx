@@ -30,7 +30,7 @@ const ChatContainer = () => {
 
         if (isGroupChat) {
             getGroupMessages(selectedUser._id);
-            subscribeGroup();
+            subscribeGroup(selectedUser._id);
             return () => unsubscribeGroupMessage();
         } else {
             getMessages(selectedUser._id);
@@ -73,11 +73,11 @@ const ChatContainer = () => {
     };
     useEffect(() => {
         if (!selectedUser?._id) return;
-
         const checkPendingRequest = async () => {
             try {
                 const response = await axiosInstance.get(`/messages/pending_requests/${selectedUser._id}`);
-
+                console.log(response);
+                
                 if (response.data) {
                     setPendingRequest(response.data);
                 } else {
@@ -133,6 +133,7 @@ const ChatContainer = () => {
 
     // show user and group message combine
     const currentMessages = isGroupChat ? groupMessages : messages;
+    console.log(pendingRequest);
 
     return (
         <div className='flex flex-col flex-1 overflow-auto' >
@@ -150,7 +151,7 @@ const ChatContainer = () => {
                                             onClick={() => handleRequest("declined")}
                                             className="btn btn-primary"
                                         >
-                                            declined
+                                            Decline
                                         </button>
                                         <button
                                             onClick={() => handleRequest("accept")}
@@ -166,7 +167,9 @@ const ChatContainer = () => {
                 )}
                 {currentMessages?.map((message) => (
                     <div key={message._id}
+
                         className={`chat ${message?.senderId == authUser?._id || message?.senderId._id == authUser._id ? "chat-end " : "chat-start"}`}>
+
                         {/* Avatar section */}
                         <div className="chat-image avatar">
                             <div className="size-10 rounded-full border">
@@ -188,8 +191,12 @@ const ChatContainer = () => {
                         </div>
 
                         {/* User messages */}
+
                         <div className={`chat-bubble flex flex-col ${message?.senderId._id == authUser?._id ? "bg-primary/80 text-primary-content " : "bg-base-200"}`}>
-                            <div className='flex gap-2  ' >
+                            <div className='flex gap-2 ' >
+                                    {/* <div className='pt-[6px] ' >
+                                        {formatMessageTime(message.createdAt) !== formatMessageTime(message.updatedAt) && <Pencil size={12} />}
+                                    </div> */}
                                 <div>
                                     {message.replyOff &&
                                         <div className={`py-2 px-3 rounded mb-2 ${message?.senderId._id == authUser?._id ? "bg-primary/50 text-primary-content " : "bg-base-100"} `} >
@@ -201,6 +208,7 @@ const ChatContainer = () => {
                                     {message.image && (
                                         <img src={message.image} alt="Attachment" className='sm:max-w-[200px] rounded-md mb-2' />
                                     )}
+
                                     {message.text || message.message && <p>{message.text || message.message}</p>}
                                     {message?.file && renderFile(message?.file)}
                                 </div>

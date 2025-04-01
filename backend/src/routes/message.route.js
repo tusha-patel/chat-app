@@ -1,6 +1,6 @@
 import express from "express";
 import protectRoute from "../middleware/auth.middleware.js";
-import { checkPendingRequest, deleteMessage, getMessages, getUserForSidebar, handleContactRequest, sendMessage, updateMessage } from "../controllers/message.controller.js";
+import { checkPendingRequest, deleteMessage, getMessages, getUserForSidebar, handleContactRequest, markMessagesAsRead, sendMessage, updateMessage } from "../controllers/message.controller.js";
 
 // messages routers
 const router = express.Router();
@@ -23,5 +23,7 @@ router.put("/update/:messageId", protectRoute, updateMessage);
 // In your messageRoutes.js
 router.get('/pending_requests/:userId', protectRoute, checkPendingRequest);
 router.post('/handle_request', protectRoute, handleContactRequest);
+router.put("/:senderId/resetUnread", protectRoute, markMessagesAsRead);
+
 
 export default router; 

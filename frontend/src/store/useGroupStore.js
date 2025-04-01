@@ -16,7 +16,9 @@ export const useGroupStore = create((set, get) => ({
         set({ isGroupLoading: true });
         try {
             const res = await axiosInstance.post("/group/create/", data);
-            set((state) => ({ groups: [...state.groups, res.data] }));
+            console.log(res);
+
+            // set((state) => ({ groups: [...state.groups, res.data] }));
         } catch (error) {
             console.log("Error creating group:", error);
             toast.error(error.response.data.message);
@@ -24,55 +26,15 @@ export const useGroupStore = create((set, get) => ({
             set({ isGroupLoading: false });
         }
     },
+    readMessages: async (groupId) => {
+        try {
+            let res = axiosInstance.patch(`/group/message/${groupId}/resetUnread`);
+            console.log(res);
 
-    // Listen for new groups in real-time
-    listenForGroupUpdates: (socket) => {
-        socket.on("groupCreated", (newGroup) => {
-            // console.log("New group received via socket:", newGroup);
-            set((state) => ({
-                groups: [...state.groups, newGroup],
-            }));
-            toast.success("new group created");
-        });
-    },
-    subscribeGroup: () => {
-        const socket = useAuthStore.getState().socket;
+        } catch (error) {
+            console.log(error, "error from read message");
 
-        // for new message
-        socket.on("newMessage", (message) => {
-            // console.log(message);
-
-            if (message.groupId) {
-                // console.log(message.groupId);
-
-                set((state) => ({
-                    groupMessages: [
-                        ...state.groupMessages,
-                        {
-                            ...message,
-                            replyOff: message.replyOff || null,
-                        },
-                    ],
-                }));
-            }
-        });
-
-        // Listen for deleted messages
-        socket.on("groupMessageDeleted", ({ messageId }) => {
-            set((state) => ({
-                groupMessages: state.groupMessages.filter((message) => message._id !== messageId),
-            }));
-        });
-
-        // Listen for updated messages
-        socket.on("editGroupMessages", (updatedGroupMessage) => {
-            // console.log(updatedGroupMessage);
-            set((state) => ({
-                groupMessages: state.groupMessages.map((message) =>
-                    message._id === updatedGroupMessage._id ? updatedGroupMessage : message
-                ),
-            }));
-        });
+        }
     },
 
     // get the group
@@ -82,7 +44,6 @@ export const useGroupStore = create((set, get) => ({
             const res = await axiosInstance.get("/group/fetch");
             // console.log(res);
             set({ groups: res.data })
-            // set((state) => ({ groups: [...state.groups, res.data] }));
         } catch (error) {
             console.log("error form group message store", error);
             toast.error(error.response.data.message);
@@ -135,7 +96,7 @@ export const useGroupStore = create((set, get) => ({
     // update the group messages
     updateGroupMessage: async ({ messageId, text }) => {
         try {
-            console.log(messageId);
+            // console.log(messageId);
             await axiosInstance.put(`/group/message//update_group_message/${messageId}`, { text });
             // console.log(res);
             toast.success("message update success")
@@ -145,7 +106,115 @@ export const useGroupStore = create((set, get) => ({
             toast.error(error.response.data.message);
         }
     },
+    
+    listenForGroupUpdates: () => {
+        const socket = useAuthStore.getState().socket;
+        socket.on("groupCreated", (newGroup) => {
+            console.log(newGroup);
 
+            set((state) => {
+                // Check if group already exists in state
+                const groupExists = state.groups.some(g => g._id === newGroup._id);
+                if (!groupExists) {
+                    return {
+                        groups: [...state.groups, newGroup],
+                    };
+                }
+                toast.success("New group created ")
+                return state;
+            });
+        });
+        socket.on("updateGroupUnread", ({ groupId, lastMessage, lastMessageTime, unreadCount }) => {
+            set((state) => ({
+                groups: state.groups.map(group =>
+                    group._id === groupId
+                        ? {
+                            ...group,
+                            lastMessage,
+                            lastMessageTime,
+                            unreadCounts: {
+                                ...group.unreadCounts,
+                                [useAuthStore.getState().authUser?._id]: unreadCount
+                            }
+                        }
+                        : group
+                ),
+            }));
+        });
+    },
+    subscribeGroup: (groupId) => {
+        const socket = useAuthStore.getState().socket;
+        if (!socket || !groupId) return;
+
+
+        // Listen for new messages
+        socket.on("newMessage", (message) => {
+            if (message.groupId === groupId) {
+                set((state) => {
+                    const exists = state.groupMessages.some(
+                        msg => msg._id === message._id
+                    );
+
+                    if (!exists) {
+                        return {
+                            groupMessages: [...state.groupMessages, message]
+                        };
+                    }
+                    return state;
+                });
+            }
+        });
+
+        // Listen for last message updates with unread counts
+        socket.on("groupLastMessageUpdate", ({ groupId: updatedGroupId, lastMessage, lastMessageTime, unreadCounts }) => {
+            if (updatedGroupId === groupId) {
+                set((state) => ({
+                    groups: state.groups.map(group =>
+                        group._id === updatedGroupId
+                            ? {
+                                ...group,
+                                lastMessage,
+                                lastMessageTime,
+                                unreadCounts: unreadCounts || group.unreadCounts
+                            }
+                            : group
+                    ),
+                }));
+            }
+        });
+        socket.on("unreadCountReset", ({ groupId: resetGroupId, unreadCounts }) => {
+            if (resetGroupId === groupId) {
+                set((state) => ({
+                    groups: state.groups.map(group =>
+                        group._id === resetGroupId
+                            ? {
+                                ...group,
+                                unreadCounts: {
+                                    ...group.unreadCounts,
+                                    ...unreadCounts
+                                }
+                            }
+                            : group
+                    ),
+                }));
+            }
+        });
+        // Listen for deleted messages
+        socket.on("groupMessageDeleted", ({ messageId }) => {
+            set((state) => ({
+                groupMessages: state.groupMessages.filter((message) => message._id !== messageId),
+            }));
+        });
+
+        // Listen for updated messages
+        socket.on("editGroupMessages", (updatedGroupMessage) => {
+            set((state) => ({
+                groupMessages: state.groupMessages.map((message) =>
+                    message._id === updatedGroupMessage._id ? updatedGroupMessage : message
+                ),
+            }));
+        });
+    },
     // disconnect socket io
     unsubscribeGroupMessage: () => {
         const socket = useAuthStore.getState().socket;
@@ -155,8 +224,15 @@ export const useGroupStore = create((set, get) => ({
         }
         socket.off("newMessage");
         socket.off("groupMessageDeleted");
-    }
-
+        socket.off("groupLastMessageUpdate");
+        socket.off("editGroupMessages");
+        socket.off("unreadCountReset");
+    },
+    returnListenForGroupUpdates: () => {
+        const socket = useAuthStore.getState().socket;
+        socket.off("groupCreated");
+        socket.off("updateGroupUnread");
+    },
 }));
 
 

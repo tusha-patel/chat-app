@@ -19,14 +19,6 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
-    lastMessage: {
-        type: String,
-        default: null
-    },
-    lastMessageTime: {
-        type: Date,
-        default: null
-    },
     contacts: [{
         userId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -37,7 +29,23 @@ const userSchema = new mongoose.Schema({
             type: String,
             enum: ["pending", "accepted", "declined"],
             default: "pending"
-        }
+        },
+        lastMessage: {
+            type: String,
+            default: null
+        },
+        lastMessageTime: {
+            type: Date,
+            default: null
+        },
+        initiatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
+        unreadCounts: {
+            type: Number,
+            default: 0,
+        },
     }]
 
 }, { timestamps: true });
@@ -45,8 +53,3 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 export default User;
-
-
-
-
-// "declined"

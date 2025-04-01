@@ -4,13 +4,12 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useGroupStore } from '../store/useGroupStore';
 import SidebarSkeleton from './skeleton/SidebarSkeleton';
 const GroupChat = ({ setGroup }) => {
-    const { users, selectedUser } = useChatStore();
+    const { acceptedContacts, selectedUser } = useChatStore();
     const [groupName, setGroupName] = useState('');
     const [groupMembers, setGroupMembers] = useState([]);
     const { onlineUsers } = useAuthStore();
     const { authUser } = useAuthStore();
     const { createGroup, isGroupLoading } = useGroupStore();
-    // console.log(isGroupLoading);
 
     // set all the group members
     const toggleGroupMember = (userId) => {
@@ -30,8 +29,6 @@ const GroupChat = ({ setGroup }) => {
 
             // Ensure logged-in user (authUser) is always part of the group
             const members = [...new Set([...groupMembers, authUser._id])];
-            // console.log(members);
-
             let data = {
                 groupName,
                 members
@@ -50,8 +47,8 @@ const GroupChat = ({ setGroup }) => {
     return (
         <div>
             <input type='text' className='p-2 border border-base-300 w-full shadow-2xl rounded ' value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder='Group Name' />
-            <button onClick={handleCreateGroup} className='w-full bg-primary p-2 rounded mt-2 ' >Create Group</button>
-            {users?.map((user) => (
+            <button onClick={handleCreateGroup} className='w-full bg-primary p-2 rounded mt-2 cursor-pointer ' >Create Group</button>
+            {acceptedContacts?.map((user) => (
                 <button key={user._id}
                     className={`w-full flex gap-3 items-center p-3 hover:bg-base-300  cursor-pointer transition-colors 
                             ${selectedUser?._id == user?._id ? " bg-base-300 ring-1 ring-base-300 " : ""} `} >

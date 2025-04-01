@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
+import Group from "../models/group.model.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -12,41 +13,68 @@ const io = new Server(server, {
 
 // Store online users
 const userSocketMap = {};
+export const activeGroupRooms = {};
+export const activeChatSessions = {};
 
-// Get receiver socket ID function (move this **below** userSocketMap)
 export function getReceiverSocketId(userId) {
     return userSocketMap[userId];
 }
 
-// Socket connection
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
     const userId = socket.handshake.query.userId;
-    if (userId) userSocketMap[userId] = socket.id;
+    console.log(userId, "user id");
 
-    // Emit list of online users
+    if (userId) {
+        userSocketMap[userId] = socket.id;
+
+        socket.on("enterChat", (contactId) => {
+            console.log(contactId, "for user");
+
+            activeChatSessions[userId] = contactId;
+            socket.emit("markMessagesAsRead", contactId);
+        });
+
+        socket.on("leaveChat", () => {
+            delete activeChatSessions[userId];
+        });
+    }
+
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-    // join the group
-    socket.on("joinGroup", (groupId) => {
+    socket.on("joinGroup", async (groupId) => {
         console.log(`User ${userId} joined group ${groupId}`);
         socket.join(groupId);
-    }); 
 
-    // for leave group
+        if (!activeGroupRooms[userId]) {
+            activeGroupRooms[userId] = new Set();
+        }
+        activeGroupRooms[userId].add(groupId);
+
+        try {
+            await Group.findByIdAndUpdate(groupId, {
+                $set: { [`unreadCounts.${userId}`]: 0 }
+            }).exec();
+        } catch (error) {
+            console.error("Error resetting group unread count:", error);
+        }
+    });
+
     socket.on("leaveGroup", (groupId) => {
         console.log(`User ${userId} leave group ${groupId}`);
+        socket.leave(groupId);
 
-        if (!userId) return;
-        if (socket.rooms.has(groupId)) {  // Check if user is actually in the group before leaving
-            socket.leave(groupId);
+        if (activeGroupRooms[userId]) {
+            activeGroupRooms[userId].delete(groupId);
         }
     });
 
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
         delete userSocketMap[userId];
+        delete activeGroupRooms[userId];
+        delete activeChatSessions[userId];
         io.emit("getOnlineUsers", Object.keys(userSocketMap));
     });
 });

@@ -7,6 +7,7 @@ import { formatMessageDay } from '../lib/Utils';
 import renderFile from '../lib/file';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
+import music from "/iphone-sms-tone-original-mp4-5732.mp3"
 const MessageInput = ({ replyOff, setreplyOff, editMessage, setEditMessage }) => {
     const [text, setText] = useState("");
     const [imagePreview, setImagePreview] = useState(null)
@@ -17,6 +18,7 @@ const MessageInput = ({ replyOff, setreplyOff, editMessage, setEditMessage }) =>
     const [file, setFile] = useState(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+    const notification = new Audio(music);
     // setEditMessage
     useEffect(() => {
         if (editMessage) {
@@ -25,8 +27,6 @@ const MessageInput = ({ replyOff, setreplyOff, editMessage, setEditMessage }) =>
             setText('');
         }
     }, [editMessage]);
-
-    // handleImage copy
 
 
 
@@ -106,8 +106,10 @@ const MessageInput = ({ replyOff, setreplyOff, editMessage, setEditMessage }) =>
             } else {
                 if (selectedUser?.members) {
                     await sendGroupMessage(messageData);
+                    notification.play();
                 } else {
                     await sendMessage(messageData);
+                    notification.play();
                 }
             }
 

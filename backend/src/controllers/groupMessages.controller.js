@@ -1,5 +1,5 @@
 import cloudinary from "../lib/cloudinary.js";
-import { io } from "../lib/socket.js";
+import { activeGroupRooms, getReceiverSocketId, io } from "../lib/socket.js";
 import Group from "../models/group.model.js";
 import GroupMessage from "../models/groupMessages.model.js";
 import path from "path"
@@ -8,10 +8,7 @@ import path from "path"
 export const sendGroupMessage = async (req, res) => {
     try {
         const { groupId, text, image, file, replyOff } = req.body;
-
         const userId = req.user._id;
-
-
         const group = await Group.findById(groupId);
         if (!group) {
             return res.status(404).json({ message: 'Group not found' });
@@ -56,8 +53,59 @@ export const sendGroupMessage = async (req, res) => {
                 },
             })
             .populate("senderId", "fullName");
+        const lastMessageContent = text || (file ? file.name : null) || (image ? "photo" : null);
+        await Group.findByIdAndUpdate(groupId, {
+            lastMessage: lastMessageContent,
+            lastMessageTime: newMessage.createdAt,
+        });
 
-        // Real-time functionality using Socket.io
+
+        const membersToUpdate = group.members.filter(memberId =>
+            memberId.toString() !== userId.toString()
+        );
+
+        // Prepare update operations
+        const updateOperations = membersToUpdate.map(memberId => {
+            // Check if member is active in this group
+            const isActive = activeGroupRooms[memberId] &&
+                activeGroupRooms[memberId].has(groupId.toString());
+
+            return {
+                updateOne: {
+                    filter: { _id: groupId },
+                    update: {
+                        $set: {
+                            lastMessage: lastMessageContent,
+                            lastMessageTime: newMessage.createdAt
+                        },
+                        // Only increment if not active in group
+                        $inc: { [`unreadCounts.${memberId}`]: isActive ? 0 : 1 }
+                    }
+                }
+            };
+        });
+        await Group.bulkWrite(updateOperations);
+
+        // Get updated group with unread counts
+        const updatedGroup = await Group.findById(groupId);
+
+        // Emit to all members individually with their specific unread count
+        membersToUpdate.forEach(memberId => {
+            const memberSocketId = getReceiverSocketId(memberId);
+            if (memberSocketId) {
+                io.to(memberSocketId).emit("updateGroupUnread", {
+                    groupId,
+                    lastMessage: lastMessageContent,
+                    lastMessageTime: newMessage.createdAt,
+                    unreadCount: updatedGroup.unreadCounts.get(memberId.toString()) || 0
+                });
+            }
+        });
+        io.to(groupId.toString()).emit("groupLastMessageUpdate", {
+            groupId,
+            lastMessage: lastMessageContent,
+            lastMessageTime: newMessage.createdAt,
+        });
         // console.log("Emitting new message to group:", groupId, populatedMessage);
         io.to(groupId).emit("newMessage", populatedMessage);
         res.status(201).json(populatedMessage);
@@ -115,8 +163,35 @@ export const deleteGroupMessage = async (req, res) => {
                 message: "This message not removed ! plz try again"
             });
         }
+        const { groupId } = groupMessage;
+
+        // Find the last non-deleted message in the group
+        const lastMessageContent = await GroupMessage.findOne({ groupId, isDeleted: false })
+            .sort({ createdAt: -1 }) // Get the latest message
+            .select("message createdAt file image")
+            .lean();
+        // console.log(lastMessageContent);
+
+        // Determine last message content
+        const newLastMessage = lastMessageContent
+            ? lastMessageContent.message || (lastMessageContent.file ? lastMessageContent.file.name : null) || (lastMessageContent.image ? "photo" : null)
+            : null;
+
+        // Update group's lastMessage and lastMessageTime
+        await Group.findByIdAndUpdate(groupId, {
+            lastMessage: newLastMessage,
+            lastMessageTime: lastMessageContent ? lastMessageContent.createdAt : null,
+        });
+
+        // Emit updated last message
+        io.to(groupId.toString()).emit("groupLastMessageUpdate", {
+            groupId,
+            lastMessage: newLastMessage,
+            lastMessageTime: lastMessageContent ? lastMessageContent.createdAt : null,
+        });
+        // io.to(groupId).emit("groupMessageDeleted", { messageId });
         // Emit the event to notify users about the deleted message
-        io.emit("groupMessageDeleted", { messageId });
+        io.to(groupId.toString()).emit("groupMessageDeleted", { messageId });
         res.status(200).json({ groupMessage });
     } catch (error) {
         console.error('Error delete group messages:', error);
@@ -146,19 +221,56 @@ export const updateGroupMessage = async (req, res) => {
                 path: "senderId",
                 select: "fullName"
             }
-        });;
+        });
 
         if (!updatedGroupMessage) {
             return res.status(404).json({ message: "Message not found." });
         }
+        const { groupId } = updatedGroupMessage;
 
+        const lastMessageContent = updatedGroupMessage.message;
+        const lastMessageTime = new Date();
+        await Group.findByIdAndUpdate(groupId, {
+            lastMessage: lastMessageContent,
+            lastMessageTime: lastMessageTime,
+        });
+        // console.log(lastMessageContent);
         // Emit the updated message to all group members
-        // console.log("Emitting editGroupMessages event for group:", updatedGroupMessage.groupId);
-        io.emit("editGroupMessages", updatedGroupMessage);
-
+        io.to(groupId.toString()).emit("editGroupMessages", updatedGroupMessage);
+        io.to(groupId.toString()).emit("groupLastMessageUpdate", {
+            groupId,
+            lastMessage: lastMessageContent,
+            lastMessageTime: lastMessageTime,
+        });
         res.status(200).json(updatedGroupMessage);
     } catch (error) {
         console.error('Error updating group message:', error);
         res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const resetUnreadCount = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const userId = req.user._id;
+
+        // Update the group and get the updated document
+        const updatedGroup = await Group.findByIdAndUpdate(
+            groupId,
+            { $set: { [`unreadCounts.${userId}`]: 0 } },
+            { new: true } // Return the updated document
+        );
+
+        // Emit real-time update to all group members
+        io.to(groupId.toString()).emit("unreadCountReset", {
+            groupId,
+            userId,
+            unreadCounts: updatedGroup?.unreadCounts
+        });
+
+        res.status(200).json({ message: "Unread count reset" });
+    } catch (error) {
+        console.error('Error resetting unread count:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };

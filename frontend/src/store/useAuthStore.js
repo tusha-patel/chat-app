@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client"
+import { useChatStore } from "./useChatStore";
 
 
 const BASE_URL = "http://localhost:5001"
@@ -12,10 +13,7 @@ export const useAuthStore = create((set, get) => ({
     isLoggIng: false,
     isUpdateProfile: false,
     contacts: [],
-    // online users
     onlineUsers: [],
-
-    // loading
     isCheckingAuth: true,
     socket: null,
 
@@ -54,11 +52,13 @@ export const useAuthStore = create((set, get) => ({
     // logout
     logout: async () => {
         try {
+            const selectedUser = useChatStore.getState().setSelectedUser;
             const res = await axiosInstance.post("/auth/logout");
             console.log(res);
             set({ authUser: null });
             toast.success("Logged out successfully");
             get().disconnectSocket();
+            selectedUser(null);
         } catch (error) {
             console.log("error in logout from useAuthStore ", error);
             toast.error(error.response.data.message);
@@ -99,39 +99,6 @@ export const useAuthStore = create((set, get) => ({
         }
     },
 
-    getUserContacts: async (userId) => {
-        try {
-            const res = await axiosInstance.get(`/auth/get_user_contacts/${userId}`);
-            console.log(res);
-            set({ contacts: res.data });
-        } catch (error) {
-            console.log("Error in getUserContacts", error);
-            toast.error(error.response.data.message);
-        }
-    },
-    // send contact request
-    // sendContactRequest: async (receiverId) => {
-    //     try {
-    //         const res = await axiosInstance.post("/auth/send_request", { receiverId });
-    //         console.log(res);
-    //         toast.success("Contact request send");
-    //     } catch (error) {
-    //         console.log("Error in sendContactRequest", error);
-    //         toast.error(error.response.data.message);
-    //     }
-    // },
-
-    // handleContactRequest: async (senderId, action) => {
-    //     try {
-    //         const res = await axiosInstance.post("/auth/handle_request", { senderId, action });
-    //         console.log(res);
-    //         toast.success(`Request ${action}ed`);
-    //     } catch (error) {
-    //         console.log("Error in handleContactRequest", error);
-    //         toast.error(error.response.data.message);
-    //     }
-    // },
-
     // search user
     searchUser: async (email) => {
         try {
@@ -162,6 +129,7 @@ export const useAuthStore = create((set, get) => ({
         socket.on("getOnlineUsers", (userIds) => {
             set({ onlineUsers: userIds })
         });
+        socket.emit('registerUser', authUser._id);
     },
 
     // disconnect the socket io

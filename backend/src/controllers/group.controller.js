@@ -8,29 +8,46 @@ import GroupMessage from "../models/groupMessages.model.js";
 export const createGroup = async (req, res) => {
     try {
         const { groupName, members } = req.body;
-        console.log(req.body);
+        // console.log(req.body);
+        console.log(groupName);
+
         if (!groupName || !members || members.length < 2) {
             return res.status(400).json({ message: 'Group name and at least two members are required' });
         }
 
+        const findGroupName = await Group.findOne({ name: groupName });
+        console.log(findGroupName);
+
+        if (findGroupName) {
+            return res.status(400).json({ message: "This group alredy exist , plz try another group name" })
+        }
+
+        console.log(members);
+        const allMembers = [...new Set([...members, req.user._id.toString()])];
+
         const newGroup = new Group({
             name: groupName,
-            members: members,
+            members: allMembers,
             createdBy: req.user._id
         });
 
         await newGroup.save();
 
-        // Emit event to all group members
-        members.forEach((memberId) => {
+        // Populate the group data before emitting
+        const populatedGroup = await Group.findById(newGroup._id)
+            .populate('members', 'fullName profilePic')
+            .populate('createdBy', 'fullName profilePic');
+
+        // Emit to all members including creator
+        allMembers.forEach((memberId) => {
             const memberSocketId = getReceiverSocketId(memberId);
             if (memberSocketId) {
-                console.log(`User ${memberId} joins room ${newGroup._id}`);
+                io.to(memberSocketId).emit("groupCreated", populatedGroup);
                 io.sockets.sockets.get(memberSocketId)?.join(newGroup._id.toString());
-                io.to(memberSocketId).emit("groupCreated", newGroup);
             }
         });
-        res.status(201).json(newGroup);
+
+        res.status(201).json(populatedGroup);
     } catch (error) {
         console.error("Error creating group:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -60,10 +77,6 @@ export const getGroup = async (req, res) => {
                 }
             })
         )
-
-
-
-
         res.status(200).json(groups);
     } catch (error) {
         console.error('Error creating group:', error);

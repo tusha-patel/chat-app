@@ -36,6 +36,10 @@ const messageSchema = new mongoose.Schema({
         type: String,
         enum: ["pending", "accepted", "declined"],
         default: "pending"
+    },
+    isRead: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 
